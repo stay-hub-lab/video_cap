@@ -1,0 +1,57 @@
+﻿# Vivado / Xilinx
+fpga/project/**/*.cache/
+fpga/project/**/*.gen/
+fpga/project/**/*.hw/
+fpga/project/**/*.ip_user_files/
+fpga/project/**/*.runs/
+fpga/project/**/*.sim/
+fpga/project/**/ip_upgrade.log
+*.jou
+*.log
+*.str
+*.tmp
+*.dcp
+*.bit
+*.bin
+*.ltx
+*.rpt
+*.wdb
+*.pb
+*.zip
+*.gz
+*.xpr.user
+.Xil/
+.cache/
+.runs/
+.hw/
+.sim/
+.gen/
+.ip_user_files/
+
+# Kernel module / Linux build artifacts
+*.o
+*.ko
+*.mod
+*.mod.c
+*.mod.cmd
+*.cmd
+*.symvers
+modules.order
+Module.symvers
+Module.markers
+.tmp_versions/
+*.a
+*.so
+*.d
+*.elf
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Project-generated outputs
+fpga/output/
+fpga/reports/
+
