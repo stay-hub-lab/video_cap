@@ -502,6 +502,38 @@ static int video_cap_querycap(struct file *file, void *priv,
 	return 0;
 }
 
+static int video_cap_enum_input(struct file *file, void *priv, struct v4l2_input *inp)
+{
+	(void)file;
+	(void)priv;
+
+	if (inp->index != 0)
+		return -EINVAL;
+
+	strscpy(inp->name, "PCIe Video Capture", sizeof(inp->name));
+	inp->type = V4L2_INPUT_TYPE_CAMERA;
+	inp->audioset = 0;
+	inp->tuner = 0;
+	inp->std = 0;
+	inp->status = 0;
+	return 0;
+}
+
+static int video_cap_g_input(struct file *file, void *priv, unsigned int *i)
+{
+	(void)file;
+	(void)priv;
+	*i = 0;
+	return 0;
+}
+
+static int video_cap_s_input(struct file *file, void *priv, unsigned int i)
+{
+	(void)file;
+	(void)priv;
+	return i == 0 ? 0 : -EINVAL;
+}
+
 static int video_cap_enum_fmt_vid_cap(struct file *file, void *priv,
 				      struct v4l2_fmtdesc *f)
 {
@@ -579,6 +611,10 @@ static int video_cap_s_parm(struct file *file, void *priv, struct v4l2_streampar
 
 static const struct v4l2_ioctl_ops video_cap_ioctl_ops = {
 	.vidioc_querycap = video_cap_querycap,
+
+	.vidioc_enum_input = video_cap_enum_input,
+	.vidioc_g_input = video_cap_g_input,
+	.vidioc_s_input = video_cap_s_input,
 
 	.vidioc_enum_fmt_vid_cap = video_cap_enum_fmt_vid_cap,
 	.vidioc_g_fmt_vid_cap = video_cap_g_fmt_vid_cap,
