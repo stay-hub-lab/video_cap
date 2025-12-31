@@ -1,0 +1,21 @@
+{
+   "ActiveEmotionalView":"Default View",
+   "Default View_ScaleFactor":"1.5",
+   "Default View_TopLeft":"-853,-345",
+   "DisplayPinAutomationMissing":"1",
+   "DisplayPinsOfHiddenNets":"1",
+   "DisplayTieOff":"1",
+   "ExpandedHierarchyInLayout":"",
+   "guistr":"# # String gsaved with Nlview 7.8.0 2024-04-26 e1825d835c VDI=44 GEI=38 GUI=JA:21.0
+#  -string -flagsOSRD
+preplace inst video_cap_c2h_bridge_0 -pg 1 -lvl 2 -x 160 -y 280 -defaultsOSRD
+preplace inst color_bar_0 -pg 1 -lvl 1 -x -280 -y 120 -defaultsOSRD
+preplace inst register_bank_0 -pg 1 -lvl 1 -x -280 -y 330 -defaultsOSRD
+preplace inst cdc_sync_0 -pg 1 -lvl 2 -x 160 -y -60 -defaultsOSRD
+preplace inst cdc_sync_1 -pg 1 -lvl 2 -x 160 -y 80 -defaultsOSRD
+preplace inst cdc_sync_2 -pg 1 -lvl 1 -x -280 -y -50 -defaultsOSRD
+levelinfo -pg 1 -430 -280 160 340
+pagesize -pg 1 -db -bbox -sgen -430 -200 400 450
+"
+}
+
