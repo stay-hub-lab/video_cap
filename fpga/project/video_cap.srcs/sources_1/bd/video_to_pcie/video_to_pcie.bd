@@ -1,21 +1,133 @@
 {
   "design": {
     "design_info": {
-      "boundary_crc": "0x0",
+      "boundary_crc": "0x2131C630A25EC801",
       "device": "xc7k480tffg1156-2",
       "gen_directory": "../../../../video_cap.gen/sources_1/bd/video_to_pcie",
       "name": "video_to_pcie",
       "rev_ctrl_bd_flag": "RevCtrlBdOff",
       "synth_flow_mode": "Hierarchical",
-      "tool_version": "2024.2"
+      "tool_version": "2024.2",
+      "validated": "true"
     },
     "design_tree": {
       "video_cap_c2h_bridge_0": "",
       "color_bar_0": "",
       "register_bank_0": "",
-      "cdc_sync_0": "",
-      "cdc_sync_1": "",
-      "cdc_sync_2": ""
+      "xdma_0": "",
+      "clk_wiz_0": "",
+      "v_vid_in_axi4s_0": "",
+      "axi_interconnect_0": {
+        "s00_couplers": {}
+      },
+      "util_ds_buf_0": "",
+      "util_vector_logic_0": "",
+      "vcc": "",
+      "proc_sys_reset_1": "",
+      "xlconcat_0": ""
+    },
+    "interface_ports": {
+      "sys": {
+        "mode": "Slave",
+        "vlnv_bus_definition": "xilinx.com:interface:diff_clock:1.0",
+        "vlnv": "xilinx.com:interface:diff_clock_rtl:1.0",
+        "parameters": {
+          "CAN_DEBUG": {
+            "value": "false",
+            "value_src": "default"
+          },
+          "FREQ_HZ": {
+            "value": "100000000",
+            "value_src": "default"
+          }
+        },
+        "port_maps": {
+          "CLK_N": {
+            "physical_name": "sys_clk_n",
+            "direction": "I",
+            "left": "0",
+            "right": "0"
+          },
+          "CLK_P": {
+            "physical_name": "sys_clk_p",
+            "direction": "I",
+            "left": "0",
+            "right": "0"
+          }
+        }
+      },
+      "pci_exp": {
+        "mode": "Master",
+        "vlnv_bus_definition": "xilinx.com:interface:pcie_7x_mgt:1.0",
+        "vlnv": "xilinx.com:interface:pcie_7x_mgt_rtl:1.0",
+        "port_maps": {
+          "rxn": {
+            "physical_name": "pci_exp_rxn",
+            "direction": "I",
+            "left": "7",
+            "right": "0"
+          },
+          "rxp": {
+            "physical_name": "pci_exp_rxp",
+            "direction": "I",
+            "left": "7",
+            "right": "0"
+          },
+          "txn": {
+            "physical_name": "pci_exp_txn",
+            "direction": "O",
+            "left": "7",
+            "right": "0"
+          },
+          "txp": {
+            "physical_name": "pci_exp_txp",
+            "direction": "O",
+            "left": "7",
+            "right": "0"
+          }
+        }
+      }
+    },
+    "ports": {
+      "sys_rst_n": {
+        "type": "rst",
+        "direction": "I",
+        "parameters": {
+          "INSERT_VIP": {
+            "value": "0",
+            "value_src": "default"
+          },
+          "POLARITY": {
+            "value": "ACTIVE_LOW",
+            "value_src": "default"
+          }
+        }
+      },
+      "sys_clk_200m": {
+        "type": "clk",
+        "direction": "I",
+        "parameters": {
+          "CLK_DOMAIN": {
+            "value": "video_to_pcie_clk_in1_0",
+            "value_src": "default"
+          },
+          "FREQ_HZ": {
+            "value": "200000000"
+          },
+          "FREQ_TOLERANCE_HZ": {
+            "value": "0",
+            "value_src": "default"
+          },
+          "INSERT_VIP": {
+            "value": "0",
+            "value_src": "default"
+          },
+          "PHASE": {
+            "value": "0.0",
+            "value_src": "default"
+          }
+        }
+      }
     },
     "components": {
       "video_cap_c2h_bridge_0": {
@@ -66,6 +178,10 @@
               "HAS_TLAST": {
                 "value": "1",
                 "value_src": "constant"
+              },
+              "CLK_DOMAIN": {
+                "value": "video_to_pcie_xdma_0_0_axi_aclk",
+                "value_src": "default_prop"
               }
             },
             "port_maps": {
@@ -129,6 +245,10 @@
               "HAS_TLAST": {
                 "value": "1",
                 "value_src": "constant"
+              },
+              "CLK_DOMAIN": {
+                "value": "video_to_pcie_xdma_0_0_axi_aclk",
+                "value_src": "default_prop"
               }
             },
             "port_maps": {
@@ -167,6 +287,14 @@
               "ASSOCIATED_RESET": {
                 "value": "axi_aresetn",
                 "value_src": "constant"
+              },
+              "ASSOCIATED_BUSIF": {
+                "value": "axis_vid:s_axis_c2h",
+                "value_src": "constant"
+              },
+              "CLK_DOMAIN": {
+                "value": "video_to_pcie_xdma_0_0_axi_aclk",
+                "value_src": "default_prop"
               }
             }
           },
@@ -181,7 +309,17 @@
             }
           },
           "ctrl_enable": {
-            "direction": "I"
+            "direction": "I",
+            "parameters": {
+              "PortType": {
+                "value": "undef",
+                "value_src": "ip_prop"
+              },
+              "PortType.PROP_SRC": {
+                "value": "false",
+                "value_src": "ip_prop"
+              }
+            }
           },
           "ctrl_soft_reset": {
             "type": "rst",
@@ -371,6 +509,10 @@
               "MAX_BURST_LENGTH": {
                 "value": "1",
                 "value_src": "auto"
+              },
+              "CLK_DOMAIN": {
+                "value": "video_to_pcie_xdma_0_0_axi_aclk",
+                "value_src": "default_prop"
               }
             },
             "memory_map_ref": "s_axil",
@@ -472,6 +614,10 @@
               "ASSOCIATED_RESET": {
                 "value": "aresetn",
                 "value_src": "constant"
+              },
+              "CLK_DOMAIN": {
+                "value": "video_to_pcie_xdma_0_0_axi_aclk",
+                "value_src": "default_prop"
               }
             }
           },
@@ -486,7 +632,17 @@
             }
           },
           "ctrl_enable": {
-            "direction": "O"
+            "direction": "O",
+            "parameters": {
+              "PortType": {
+                "value": "undef",
+                "value_src": "ip_prop"
+              },
+              "PortType.PROP_SRC": {
+                "value": "false",
+                "value_src": "ip_prop"
+              }
+            }
           },
           "ctrl_soft_reset": {
             "type": "rst",
@@ -496,7 +652,17 @@
             "direction": "O"
           },
           "sts_idle": {
-            "direction": "I"
+            "direction": "I",
+            "parameters": {
+              "PortType": {
+                "value": "undef",
+                "value_src": "ip_prop"
+              },
+              "PortType.PROP_SRC": {
+                "value": "false",
+                "value_src": "ip_prop"
+              }
+            }
           },
           "sts_mig_calib": {
             "direction": "I"
@@ -515,114 +681,559 @@
           }
         }
       },
-      "cdc_sync_0": {
-        "vlnv": "xilinx.com:module_ref:cdc_sync:1.0",
-        "ip_revision": "1",
-        "xci_name": "video_to_pcie_cdc_sync_0_0",
-        "xci_path": "ip\\video_to_pcie_cdc_sync_0_0\\video_to_pcie_cdc_sync_0_0.xci",
-        "inst_hier_path": "cdc_sync_0",
-        "reference_info": {
-          "ref_type": "hdl",
-          "ref_name": "cdc_sync",
-          "boundary_crc": "0x0"
+      "xdma_0": {
+        "vlnv": "xilinx.com:ip:xdma:4.1",
+        "ip_revision": "31",
+        "xci_name": "video_to_pcie_xdma_0_0",
+        "xci_path": "ip\\video_to_pcie_xdma_0_0\\video_to_pcie_xdma_0_0.xci",
+        "inst_hier_path": "xdma_0",
+        "parameters": {
+          "axilite_master_en": {
+            "value": "true"
+          },
+          "cfg_mgmt_if": {
+            "value": "false"
+          },
+          "pf0_base_class_menu": {
+            "value": "Multimedia_device"
+          },
+          "pf0_msix_enabled": {
+            "value": "true"
+          },
+          "pf0_sub_class_interface_menu": {
+            "value": "Video_device"
+          },
+          "pl_link_cap_max_link_speed": {
+            "value": "5.0_GT/s"
+          },
+          "pl_link_cap_max_link_width": {
+            "value": "X8"
+          },
+          "xdma_axi_intf_mm": {
+            "value": "AXI_Stream"
+          },
+          "xdma_num_usr_irq": {
+            "value": "4"
+          }
         },
-        "ports": {
-          "clk_dst": {
-            "direction": "I"
-          },
-          "rst_n": {
-            "type": "rst",
-            "direction": "I",
-            "parameters": {
-              "POLARITY": {
-                "value": "ACTIVE_LOW",
-                "value_src": "constant"
-              }
+        "interface_ports": {
+          "M_AXI_LITE": {
+            "vlnv": "xilinx.com:interface:aximm_rtl:1.0",
+            "mode": "Master",
+            "address_space_ref": "M_AXI_LITE",
+            "base_address": {
+              "minimum": "0x00000000",
+              "maximum": "0xFFFFFFFF",
+              "width": "32"
             }
-          },
-          "sig_in": {
-            "direction": "I",
-            "left": "0",
-            "right": "0"
-          },
-          "sig_out": {
-            "direction": "O",
-            "left": "0",
-            "right": "0"
+          }
+        },
+        "addressing": {
+          "address_spaces": {
+            "M_AXI_LITE": {
+              "range": "4G",
+              "width": "32"
+            }
           }
         }
       },
-      "cdc_sync_1": {
-        "vlnv": "xilinx.com:module_ref:cdc_sync:1.0",
-        "ip_revision": "1",
-        "xci_name": "video_to_pcie_cdc_sync_1_0",
-        "xci_path": "ip\\video_to_pcie_cdc_sync_1_0\\video_to_pcie_cdc_sync_1_0.xci",
-        "inst_hier_path": "cdc_sync_1",
-        "reference_info": {
-          "ref_type": "hdl",
-          "ref_name": "cdc_sync",
-          "boundary_crc": "0x0"
-        },
-        "ports": {
-          "clk_dst": {
-            "direction": "I"
+      "clk_wiz_0": {
+        "vlnv": "xilinx.com:ip:clk_wiz:6.0",
+        "ip_revision": "15",
+        "xci_name": "video_to_pcie_clk_wiz_0_0",
+        "xci_path": "ip\\video_to_pcie_clk_wiz_0_0\\video_to_pcie_clk_wiz_0_0.xci",
+        "inst_hier_path": "clk_wiz_0",
+        "parameters": {
+          "CLKIN1_JITTER_PS": {
+            "value": "50.0"
           },
-          "rst_n": {
-            "type": "rst",
-            "direction": "I",
-            "parameters": {
-              "POLARITY": {
-                "value": "ACTIVE_LOW",
-                "value_src": "constant"
-              }
-            }
+          "CLKOUT1_JITTER": {
+            "value": "215.720"
           },
-          "sig_in": {
-            "direction": "I",
-            "left": "0",
-            "right": "0"
+          "CLKOUT1_PHASE_ERROR": {
+            "value": "245.344"
           },
-          "sig_out": {
-            "direction": "O",
-            "left": "0",
-            "right": "0"
+          "CLKOUT1_REQUESTED_OUT_FREQ": {
+            "value": "148.5"
+          },
+          "MMCM_CLKFBOUT_MULT_F": {
+            "value": "37.125"
+          },
+          "MMCM_CLKIN1_PERIOD": {
+            "value": "5.000"
+          },
+          "MMCM_CLKIN2_PERIOD": {
+            "value": "10.0"
+          },
+          "MMCM_CLKOUT0_DIVIDE_F": {
+            "value": "6.250"
+          },
+          "MMCM_DIVCLK_DIVIDE": {
+            "value": "8"
+          },
+          "PRIM_IN_FREQ": {
+            "value": "200.000"
+          },
+          "PRIM_SOURCE": {
+            "value": "Single_ended_clock_capable_pin"
+          },
+          "USE_RESET": {
+            "value": "false"
           }
         }
       },
-      "cdc_sync_2": {
-        "vlnv": "xilinx.com:module_ref:cdc_sync:1.0",
-        "ip_revision": "1",
-        "xci_name": "video_to_pcie_cdc_sync_2_0",
-        "xci_path": "ip\\video_to_pcie_cdc_sync_2_0\\video_to_pcie_cdc_sync_2_0.xci",
-        "inst_hier_path": "cdc_sync_2",
-        "reference_info": {
-          "ref_type": "hdl",
-          "ref_name": "cdc_sync",
-          "boundary_crc": "0x0"
+      "v_vid_in_axi4s_0": {
+        "vlnv": "xilinx.com:ip:v_vid_in_axi4s:5.0",
+        "ip_revision": "5",
+        "xci_name": "video_to_pcie_v_vid_in_axi4s_0_0",
+        "xci_path": "ip\\video_to_pcie_v_vid_in_axi4s_0_0\\video_to_pcie_v_vid_in_axi4s_0_0.xci",
+        "inst_hier_path": "v_vid_in_axi4s_0",
+        "parameters": {
+          "C_ADDR_WIDTH": {
+            "value": "13"
+          },
+          "C_HAS_ASYNC_CLK": {
+            "value": "1"
+          }
+        }
+      },
+      "axi_interconnect_0": {
+        "vlnv": "xilinx.com:ip:axi_interconnect:2.1",
+        "xci_path": "ip\\video_to_pcie_axi_interconnect_0_0\\video_to_pcie_axi_interconnect_0_0.xci",
+        "inst_hier_path": "axi_interconnect_0",
+        "xci_name": "video_to_pcie_axi_interconnect_0_0",
+        "parameters": {
+          "NUM_MI": {
+            "value": "1"
+          }
+        },
+        "interface_ports": {
+          "S00_AXI": {
+            "mode": "Slave",
+            "vlnv_bus_definition": "xilinx.com:interface:aximm:1.0",
+            "vlnv": "xilinx.com:interface:aximm_rtl:1.0"
+          },
+          "M00_AXI": {
+            "mode": "Master",
+            "vlnv_bus_definition": "xilinx.com:interface:aximm:1.0",
+            "vlnv": "xilinx.com:interface:aximm_rtl:1.0"
+          }
         },
         "ports": {
-          "clk_dst": {
-            "direction": "I"
-          },
-          "rst_n": {
-            "type": "rst",
+          "ACLK": {
+            "type": "clk",
             "direction": "I",
             "parameters": {
-              "POLARITY": {
-                "value": "ACTIVE_LOW",
-                "value_src": "constant"
+              "ASSOCIATED_RESET": {
+                "value": "ARESETN"
               }
             }
           },
-          "sig_in": {
-            "direction": "I",
-            "left": "0",
-            "right": "0"
+          "ARESETN": {
+            "type": "rst",
+            "direction": "I"
           },
-          "sig_out": {
-            "direction": "O",
-            "left": "0",
-            "right": "0"
+          "S00_ACLK": {
+            "type": "clk",
+            "direction": "I",
+            "parameters": {
+              "ASSOCIATED_BUSIF": {
+                "value": "S00_AXI"
+              },
+              "ASSOCIATED_RESET": {
+                "value": "S00_ARESETN"
+              }
+            }
+          },
+          "S00_ARESETN": {
+            "type": "rst",
+            "direction": "I"
+          },
+          "M00_ACLK": {
+            "type": "clk",
+            "direction": "I",
+            "parameters": {
+              "ASSOCIATED_BUSIF": {
+                "value": "M00_AXI"
+              },
+              "ASSOCIATED_RESET": {
+                "value": "M00_ARESETN"
+              }
+            }
+          },
+          "M00_ARESETN": {
+            "type": "rst",
+            "direction": "I"
+          }
+        },
+        "components": {
+          "s00_couplers": {
+            "interface_ports": {
+              "M_AXI": {
+                "mode": "Master",
+                "vlnv_bus_definition": "xilinx.com:interface:aximm:1.0",
+                "vlnv": "xilinx.com:interface:aximm_rtl:1.0"
+              },
+              "S_AXI": {
+                "mode": "Slave",
+                "vlnv_bus_definition": "xilinx.com:interface:aximm:1.0",
+                "vlnv": "xilinx.com:interface:aximm_rtl:1.0"
+              }
+            },
+            "ports": {
+              "M_ACLK": {
+                "type": "clk",
+                "direction": "I",
+                "parameters": {
+                  "ASSOCIATED_BUSIF": {
+                    "value": "M_AXI"
+                  },
+                  "ASSOCIATED_RESET": {
+                    "value": "M_ARESETN"
+                  }
+                }
+              },
+              "M_ARESETN": {
+                "type": "rst",
+                "direction": "I"
+              },
+              "S_ACLK": {
+                "type": "clk",
+                "direction": "I",
+                "parameters": {
+                  "ASSOCIATED_BUSIF": {
+                    "value": "S_AXI"
+                  },
+                  "ASSOCIATED_RESET": {
+                    "value": "S_ARESETN"
+                  }
+                }
+              },
+              "S_ARESETN": {
+                "type": "rst",
+                "direction": "I"
+              }
+            },
+            "interface_nets": {
+              "s00_couplers_to_s00_couplers": {
+                "interface_ports": [
+                  "S_AXI",
+                  "M_AXI"
+                ]
+              }
+            }
+          }
+        },
+        "interface_nets": {
+          "axi_interconnect_0_to_s00_couplers": {
+            "interface_ports": [
+              "S00_AXI",
+              "s00_couplers/S_AXI"
+            ]
+          },
+          "s00_couplers_to_axi_interconnect_0": {
+            "interface_ports": [
+              "s00_couplers/M_AXI",
+              "M00_AXI"
+            ]
+          }
+        },
+        "nets": {
+          "S00_ACLK_1": {
+            "ports": [
+              "S00_ACLK",
+              "s00_couplers/S_ACLK"
+            ]
+          },
+          "S00_ARESETN_1": {
+            "ports": [
+              "S00_ARESETN",
+              "s00_couplers/S_ARESETN"
+            ]
+          },
+          "axi_interconnect_0_ACLK_net": {
+            "ports": [
+              "M00_ACLK",
+              "s00_couplers/M_ACLK"
+            ]
+          },
+          "axi_interconnect_0_ARESETN_net": {
+            "ports": [
+              "M00_ARESETN",
+              "s00_couplers/M_ARESETN"
+            ]
+          }
+        }
+      },
+      "util_ds_buf_0": {
+        "vlnv": "xilinx.com:ip:util_ds_buf:2.2",
+        "ip_revision": "7",
+        "xci_name": "video_to_pcie_util_ds_buf_0_0",
+        "xci_path": "ip\\video_to_pcie_util_ds_buf_0_0\\video_to_pcie_util_ds_buf_0_0.xci",
+        "inst_hier_path": "util_ds_buf_0",
+        "parameters": {
+          "C_BUF_TYPE": {
+            "value": "IBUFDSGTE"
+          }
+        }
+      },
+      "util_vector_logic_0": {
+        "vlnv": "xilinx.com:ip:util_vector_logic:2.0",
+        "ip_revision": "4",
+        "xci_name": "video_to_pcie_util_vector_logic_0_0",
+        "xci_path": "ip\\video_to_pcie_util_vector_logic_0_0\\video_to_pcie_util_vector_logic_0_0.xci",
+        "inst_hier_path": "util_vector_logic_0",
+        "parameters": {
+          "C_OPERATION": {
+            "value": "not"
+          },
+          "C_SIZE": {
+            "value": "1"
+          }
+        }
+      },
+      "vcc": {
+        "vlnv": "xilinx.com:ip:xlconstant:1.1",
+        "ip_revision": "9",
+        "xci_name": "video_to_pcie_xlconstant_0_0",
+        "xci_path": "ip\\video_to_pcie_xlconstant_0_0\\video_to_pcie_xlconstant_0_0.xci",
+        "inst_hier_path": "vcc"
+      },
+      "proc_sys_reset_1": {
+        "vlnv": "xilinx.com:ip:proc_sys_reset:5.0",
+        "ip_revision": "16",
+        "xci_name": "video_to_pcie_proc_sys_reset_0_1",
+        "xci_path": "ip\\video_to_pcie_proc_sys_reset_0_1\\video_to_pcie_proc_sys_reset_0_1.xci",
+        "inst_hier_path": "proc_sys_reset_1"
+      },
+      "xlconcat_0": {
+        "vlnv": "xilinx.com:ip:xlconcat:2.1",
+        "ip_revision": "6",
+        "xci_name": "video_to_pcie_xlconcat_0_0",
+        "xci_path": "ip\\video_to_pcie_xlconcat_0_0\\video_to_pcie_xlconcat_0_0.xci",
+        "inst_hier_path": "xlconcat_0",
+        "parameters": {
+          "NUM_PORTS": {
+            "value": "3"
+          }
+        }
+      }
+    },
+    "interface_nets": {
+      "CLK_IN_D_0_1": {
+        "interface_ports": [
+          "sys",
+          "util_ds_buf_0/CLK_IN_D"
+        ]
+      },
+      "S00_AXI_1": {
+        "interface_ports": [
+          "axi_interconnect_0/S00_AXI",
+          "xdma_0/M_AXI_LITE"
+        ]
+      },
+      "axi_interconnect_0_M00_AXI": {
+        "interface_ports": [
+          "register_bank_0/s_axil",
+          "axi_interconnect_0/M00_AXI"
+        ]
+      },
+      "v_vid_in_axi4s_0_video_out": {
+        "interface_ports": [
+          "v_vid_in_axi4s_0/video_out",
+          "video_cap_c2h_bridge_0/axis_vid"
+        ]
+      },
+      "video_cap_c2h_bridge_0_s_axis_c2h": {
+        "interface_ports": [
+          "xdma_0/S_AXIS_C2H_0",
+          "video_cap_c2h_bridge_0/s_axis_c2h"
+        ]
+      },
+      "xdma_0_pcie_mgt": {
+        "interface_ports": [
+          "pci_exp",
+          "xdma_0/pcie_mgt"
+        ]
+      }
+    },
+    "nets": {
+      "Net": {
+        "ports": [
+          "clk_wiz_0/clk_out1",
+          "color_bar_0/clk",
+          "v_vid_in_axi4s_0/vid_io_in_clk",
+          "proc_sys_reset_1/slowest_sync_clk"
+        ]
+      },
+      "clk_in1_0_1": {
+        "ports": [
+          "sys_clk_200m",
+          "clk_wiz_0/clk_in1"
+        ]
+      },
+      "clk_wiz_0_locked": {
+        "ports": [
+          "clk_wiz_0/locked",
+          "proc_sys_reset_1/ext_reset_in"
+        ]
+      },
+      "color_bar_0_de": {
+        "ports": [
+          "color_bar_0/de",
+          "v_vid_in_axi4s_0/vid_active_video"
+        ]
+      },
+      "color_bar_0_hs": {
+        "ports": [
+          "color_bar_0/hs",
+          "v_vid_in_axi4s_0/vid_hsync"
+        ]
+      },
+      "color_bar_0_rgb_b": {
+        "ports": [
+          "color_bar_0/rgb_b",
+          "xlconcat_0/In0"
+        ]
+      },
+      "color_bar_0_rgb_g": {
+        "ports": [
+          "color_bar_0/rgb_g",
+          "xlconcat_0/In1"
+        ]
+      },
+      "color_bar_0_rgb_r": {
+        "ports": [
+          "color_bar_0/rgb_r",
+          "xlconcat_0/In2"
+        ]
+      },
+      "color_bar_0_vs": {
+        "ports": [
+          "color_bar_0/vs",
+          "v_vid_in_axi4s_0/vid_vsync",
+          "video_cap_c2h_bridge_0/vid_vsync"
+        ]
+      },
+      "proc_sys_reset_1_peripheral_reset": {
+        "ports": [
+          "proc_sys_reset_1/peripheral_reset",
+          "color_bar_0/rst"
+        ]
+      },
+      "register_bank_0_ctrl_enable": {
+        "ports": [
+          "register_bank_0/ctrl_enable",
+          "util_vector_logic_0/Op1",
+          "video_cap_c2h_bridge_0/ctrl_enable"
+        ]
+      },
+      "register_bank_0_ctrl_soft_reset": {
+        "ports": [
+          "register_bank_0/ctrl_soft_reset",
+          "video_cap_c2h_bridge_0/ctrl_soft_reset"
+        ]
+      },
+      "sys_rst_n_0_1": {
+        "ports": [
+          "sys_rst_n",
+          "xdma_0/sys_rst_n"
+        ]
+      },
+      "util_ds_buf_0_IBUF_OUT": {
+        "ports": [
+          "util_ds_buf_0/IBUF_OUT",
+          "xdma_0/sys_clk"
+        ]
+      },
+      "util_vector_logic_0_Res": {
+        "ports": [
+          "util_vector_logic_0/Res",
+          "register_bank_0/sts_idle"
+        ]
+      },
+      "v_vid_in_axi4s_0_overflow": {
+        "ports": [
+          "v_vid_in_axi4s_0/overflow",
+          "video_cap_c2h_bridge_0/vid_fifo_overflow"
+        ]
+      },
+      "v_vid_in_axi4s_0_underflow": {
+        "ports": [
+          "v_vid_in_axi4s_0/underflow",
+          "video_cap_c2h_bridge_0/vid_fifo_underflow"
+        ]
+      },
+      "video_cap_c2h_bridge_0_sts_fifo_overflow": {
+        "ports": [
+          "video_cap_c2h_bridge_0/sts_fifo_overflow",
+          "register_bank_0/sts_fifo_overflow"
+        ]
+      },
+      "video_cap_c2h_bridge_0_usr_irq_req": {
+        "ports": [
+          "video_cap_c2h_bridge_0/usr_irq_req",
+          "xdma_0/usr_irq_req"
+        ]
+      },
+      "xdma_0_axi_aclk": {
+        "ports": [
+          "xdma_0/axi_aclk",
+          "v_vid_in_axi4s_0/aclk",
+          "axi_interconnect_0/ACLK",
+          "axi_interconnect_0/S00_ACLK",
+          "axi_interconnect_0/M00_ACLK",
+          "register_bank_0/aclk",
+          "video_cap_c2h_bridge_0/axi_aclk"
+        ]
+      },
+      "xdma_0_axi_aresetn": {
+        "ports": [
+          "xdma_0/axi_aresetn",
+          "axi_interconnect_0/ARESETN",
+          "axi_interconnect_0/M00_ARESETN",
+          "axi_interconnect_0/S00_ARESETN",
+          "register_bank_0/aresetn",
+          "v_vid_in_axi4s_0/aresetn",
+          "video_cap_c2h_bridge_0/axi_aresetn"
+        ]
+      },
+      "xdma_0_user_lnk_up": {
+        "ports": [
+          "xdma_0/user_lnk_up",
+          "register_bank_0/sts_pcie_link_up"
+        ]
+      },
+      "xdma_0_usr_irq_ack": {
+        "ports": [
+          "xdma_0/usr_irq_ack",
+          "video_cap_c2h_bridge_0/usr_irq_ack"
+        ]
+      },
+      "xlconcat_0_dout": {
+        "ports": [
+          "xlconcat_0/dout",
+          "v_vid_in_axi4s_0/vid_data"
+        ]
+      },
+      "xlconstant_0_dout": {
+        "ports": [
+          "vcc/dout",
+          "register_bank_0/sts_mig_calib"
+        ]
+      }
+    },
+    "addressing": {
+      "/xdma_0": {
+        "address_spaces": {
+          "M_AXI_LITE": {
+            "segments": {
+              "SEG_register_bank_0_reg0": {
+                "address_block": "/register_bank_0/s_axil/reg0",
+                "offset": "0x00000000",
+                "range": "64K"
+              }
+            }
           }
         }
       }

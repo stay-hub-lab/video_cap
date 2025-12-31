@@ -22,7 +22,14 @@ module video_cap_c2h_bridge #(
     parameter integer FRAME_LINES = 1080,
     parameter integer C2H_BRAM_FIFO_DEPTH_WORDS = 4096  // 4096 * 16B = 64KB
 ) (
+    // 说明：为了让 “Add Module to Block Design”（Module Reference）方式在 BD 中不报
+    // “AXIS 接口未关联时钟/复位”等错误，这里显式声明时钟/复位与 AXIS bus 的关联关系。
+    (* X_INTERFACE_INFO = "xilinx.com:signal:clock:1.0 axi_aclk CLK" *)
+    (* X_INTERFACE_PARAMETER = "ASSOCIATED_BUSIF axis_vid:s_axis_c2h, ASSOCIATED_RESET axi_aresetn" *)
     input  wire         axi_aclk,
+
+    (* X_INTERFACE_INFO = "xilinx.com:signal:reset:1.0 axi_aresetn RST" *)
+    (* X_INTERFACE_PARAMETER = "POLARITY ACTIVE_LOW" *)
     input  wire         axi_aresetn,
 
     // 控制（AXI 域）
@@ -337,4 +344,3 @@ module video_cap_c2h_bridge #(
     assign usr_irq_req = irq_req_reg;
 
 endmodule
-

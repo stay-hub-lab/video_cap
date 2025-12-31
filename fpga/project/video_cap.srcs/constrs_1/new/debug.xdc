@@ -38,173 +38,42 @@ connect_debug_port u_ila_0/probe35 [get_nets [list vid_fifo_error_sticky]]
 connect_debug_port u_ila_0/probe36 [get_nets [list vid_fifo_overflow_axi]]
 connect_debug_port u_ila_0/probe38 [get_nets [list vid_fifo_underflow_axi]]
 
-create_debug_core u_ila_0 ila
-set_property ALL_PROBE_SAME_MU true [get_debug_cores u_ila_0]
-set_property ALL_PROBE_SAME_MU_CNT 1 [get_debug_cores u_ila_0]
-set_property C_ADV_TRIGGER false [get_debug_cores u_ila_0]
-set_property C_DATA_DEPTH 1024 [get_debug_cores u_ila_0]
-set_property C_EN_STRG_QUAL false [get_debug_cores u_ila_0]
-set_property C_INPUT_PIPE_STAGES 0 [get_debug_cores u_ila_0]
-set_property C_TRIGIN_EN false [get_debug_cores u_ila_0]
-set_property C_TRIGOUT_EN false [get_debug_cores u_ila_0]
-set_property port_width 1 [get_debug_ports u_ila_0/clk]
 connect_debug_port u_ila_0/clk [get_nets [list u_xdma_0/inst/xdma_0_pcie2_to_pcie3_wrapper_i/pcie2_ip_i/inst/inst/gt_top_i/pipe_wrapper_i/pipe_clock_int.pipe_clock_i/CLK_USERCLK2]]
-set_property PROBE_TYPE DATA_AND_TRIGGER [get_debug_ports u_ila_0/probe0]
-set_property port_width 129 [get_debug_ports u_ila_0/probe0]
 connect_debug_port u_ila_0/probe0 [get_nets [list {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[0]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[1]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[2]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[3]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[4]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[5]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[6]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[7]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[8]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[9]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[10]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[11]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[12]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[13]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[14]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[15]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[16]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[17]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[18]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[19]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[20]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[21]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[22]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[23]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[24]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[25]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[26]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[27]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[28]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[29]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[30]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[31]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[32]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[33]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[34]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[35]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[36]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[37]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[38]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[39]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[40]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[41]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[42]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[43]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[44]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[45]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[46]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[47]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[48]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[49]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[50]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[51]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[52]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[53]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[54]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[55]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[56]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[57]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[58]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[59]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[60]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[61]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[62]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[63]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[64]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[65]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[66]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[67]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[68]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[69]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[70]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[71]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[72]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[73]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[74]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[75]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[76]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[77]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[78]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[79]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[80]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[81]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[82]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[83]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[84]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[85]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[86]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[87]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[88]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[89]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[90]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[91]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[92]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[93]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[94]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[95]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[96]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[97]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[98]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[99]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[100]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[101]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[102]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[103]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[104]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[105]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[106]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[107]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[108]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[109]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[110]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[111]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[112]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[113]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[114]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[115]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[116]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[117]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[118]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[119]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[120]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[121]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[122]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[123]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[124]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[125]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[126]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[127]} {u_video_cap_c2h_bridge/c2h_bram_fifo_dout[128]}]]
-create_debug_port u_ila_0 probe
-set_property PROBE_TYPE DATA_AND_TRIGGER [get_debug_ports u_ila_0/probe1]
-set_property port_width 24 [get_debug_ports u_ila_0/probe1]
 connect_debug_port u_ila_0/probe1 [get_nets [list {axis_vid_tdata[0]} {axis_vid_tdata[1]} {axis_vid_tdata[2]} {axis_vid_tdata[3]} {axis_vid_tdata[4]} {axis_vid_tdata[5]} {axis_vid_tdata[6]} {axis_vid_tdata[7]} {axis_vid_tdata[8]} {axis_vid_tdata[9]} {axis_vid_tdata[10]} {axis_vid_tdata[11]} {axis_vid_tdata[12]} {axis_vid_tdata[13]} {axis_vid_tdata[14]} {axis_vid_tdata[15]} {axis_vid_tdata[16]} {axis_vid_tdata[17]} {axis_vid_tdata[18]} {axis_vid_tdata[19]} {axis_vid_tdata[20]} {axis_vid_tdata[21]} {axis_vid_tdata[22]} {axis_vid_tdata[23]}]]
-create_debug_port u_ila_0 probe
-set_property PROBE_TYPE DATA_AND_TRIGGER [get_debug_ports u_ila_0/probe2]
-set_property port_width 11 [get_debug_ports u_ila_0/probe2]
 connect_debug_port u_ila_0/probe2 [get_nets [list {u_video_cap_c2h_bridge/line_cnt[0]} {u_video_cap_c2h_bridge/line_cnt[1]} {u_video_cap_c2h_bridge/line_cnt[2]} {u_video_cap_c2h_bridge/line_cnt[3]} {u_video_cap_c2h_bridge/line_cnt[4]} {u_video_cap_c2h_bridge/line_cnt[5]} {u_video_cap_c2h_bridge/line_cnt[6]} {u_video_cap_c2h_bridge/line_cnt[7]} {u_video_cap_c2h_bridge/line_cnt[8]} {u_video_cap_c2h_bridge/line_cnt[9]} {u_video_cap_c2h_bridge/line_cnt[10]}]]
-create_debug_port u_ila_0 probe
-set_property PROBE_TYPE DATA_AND_TRIGGER [get_debug_ports u_ila_0/probe3]
-set_property port_width 4 [get_debug_ports u_ila_0/probe3]
 connect_debug_port u_ila_0/probe3 [get_nets [list {usr_irq_req[0]} {usr_irq_req[1]} {usr_irq_req[2]} {usr_irq_req[3]}]]
-create_debug_port u_ila_0 probe
-set_property PROBE_TYPE DATA_AND_TRIGGER [get_debug_ports u_ila_0/probe4]
-set_property port_width 4 [get_debug_ports u_ila_0/probe4]
 connect_debug_port u_ila_0/probe4 [get_nets [list {usr_irq_ack[0]} {usr_irq_ack[1]} {usr_irq_ack[2]} {usr_irq_ack[3]}]]
-create_debug_port u_ila_0 probe
-set_property PROBE_TYPE DATA_AND_TRIGGER [get_debug_ports u_ila_0/probe5]
-set_property port_width 1 [get_debug_ports u_ila_0/probe5]
 connect_debug_port u_ila_0/probe5 [get_nets [list axis_vid_tlast]]
-create_debug_port u_ila_0 probe
-set_property PROBE_TYPE DATA_AND_TRIGGER [get_debug_ports u_ila_0/probe6]
-set_property port_width 1 [get_debug_ports u_ila_0/probe6]
 connect_debug_port u_ila_0/probe6 [get_nets [list axis_vid_tready]]
-create_debug_port u_ila_0 probe
-set_property PROBE_TYPE DATA_AND_TRIGGER [get_debug_ports u_ila_0/probe7]
-set_property port_width 1 [get_debug_ports u_ila_0/probe7]
 connect_debug_port u_ila_0/probe7 [get_nets [list axis_vid_tuser]]
-create_debug_port u_ila_0 probe
-set_property PROBE_TYPE DATA_AND_TRIGGER [get_debug_ports u_ila_0/probe8]
-set_property port_width 1 [get_debug_ports u_ila_0/probe8]
 connect_debug_port u_ila_0/probe8 [get_nets [list axis_vid_tvalid]]
-create_debug_port u_ila_0 probe
-set_property PROBE_TYPE DATA_AND_TRIGGER [get_debug_ports u_ila_0/probe9]
-set_property port_width 1 [get_debug_ports u_ila_0/probe9]
 connect_debug_port u_ila_0/probe9 [get_nets [list u_video_cap_c2h_bridge/c2h_bram_fifo_empty]]
-create_debug_port u_ila_0 probe
-set_property PROBE_TYPE DATA_AND_TRIGGER [get_debug_ports u_ila_0/probe10]
-set_property port_width 1 [get_debug_ports u_ila_0/probe10]
 connect_debug_port u_ila_0/probe10 [get_nets [list u_video_cap_c2h_bridge/c2h_bram_fifo_full]]
-create_debug_port u_ila_0 probe
-set_property PROBE_TYPE DATA_AND_TRIGGER [get_debug_ports u_ila_0/probe11]
-set_property port_width 1 [get_debug_ports u_ila_0/probe11]
 connect_debug_port u_ila_0/probe11 [get_nets [list ctrl_enable]]
-create_debug_port u_ila_0 probe
-set_property PROBE_TYPE DATA_AND_TRIGGER [get_debug_ports u_ila_0/probe12]
-set_property port_width 1 [get_debug_ports u_ila_0/probe12]
 connect_debug_port u_ila_0/probe12 [get_nets [list ctrl_soft_reset]]
-create_debug_port u_ila_0 probe
-set_property PROBE_TYPE DATA_AND_TRIGGER [get_debug_ports u_ila_0/probe13]
-set_property port_width 1 [get_debug_ports u_ila_0/probe13]
 connect_debug_port u_ila_0/probe13 [get_nets [list ctrl_test_mode]]
-create_debug_port u_ila_0 probe
-set_property PROBE_TYPE DATA_AND_TRIGGER [get_debug_ports u_ila_0/probe14]
-set_property port_width 1 [get_debug_ports u_ila_0/probe14]
 connect_debug_port u_ila_0/probe14 [get_nets [list u_video_cap_c2h_bridge/first_frame_seen]]
-create_debug_port u_ila_0 probe
-set_property PROBE_TYPE DATA_AND_TRIGGER [get_debug_ports u_ila_0/probe15]
-set_property port_width 1 [get_debug_ports u_ila_0/probe15]
 connect_debug_port u_ila_0/probe15 [get_nets [list u_video_cap_c2h_bridge/frame_in_progress]]
-create_debug_port u_ila_0 probe
-set_property PROBE_TYPE DATA_AND_TRIGGER [get_debug_ports u_ila_0/probe16]
-set_property port_width 1 [get_debug_ports u_ila_0/probe16]
 connect_debug_port u_ila_0/probe16 [get_nets [list s_axis_c2h_tlast_0]]
-create_debug_port u_ila_0 probe
-set_property PROBE_TYPE DATA_AND_TRIGGER [get_debug_ports u_ila_0/probe17]
-set_property port_width 1 [get_debug_ports u_ila_0/probe17]
 connect_debug_port u_ila_0/probe17 [get_nets [list s_axis_c2h_tready_0]]
-create_debug_port u_ila_0 probe
-set_property PROBE_TYPE DATA_AND_TRIGGER [get_debug_ports u_ila_0/probe18]
-set_property port_width 1 [get_debug_ports u_ila_0/probe18]
 connect_debug_port u_ila_0/probe18 [get_nets [list s_axis_c2h_tvalid_0]]
-create_debug_port u_ila_0 probe
-set_property PROBE_TYPE DATA_AND_TRIGGER [get_debug_ports u_ila_0/probe19]
-set_property port_width 1 [get_debug_ports u_ila_0/probe19]
 connect_debug_port u_ila_0/probe19 [get_nets [list u_video_cap_c2h_bridge/sof_wait_axis]]
-create_debug_port u_ila_0 probe
-set_property PROBE_TYPE DATA_AND_TRIGGER [get_debug_ports u_ila_0/probe20]
-set_property port_width 1 [get_debug_ports u_ila_0/probe20]
 connect_debug_port u_ila_0/probe20 [get_nets [list sts_fifo_overflow]]
-create_debug_port u_ila_0 probe
-set_property PROBE_TYPE DATA_AND_TRIGGER [get_debug_ports u_ila_0/probe21]
-set_property port_width 1 [get_debug_ports u_ila_0/probe21]
 connect_debug_port u_ila_0/probe21 [get_nets [list sts_idle]]
-create_debug_port u_ila_0 probe
-set_property PROBE_TYPE DATA_AND_TRIGGER [get_debug_ports u_ila_0/probe22]
-set_property port_width 1 [get_debug_ports u_ila_0/probe22]
 connect_debug_port u_ila_0/probe22 [get_nets [list user_lnk_up]]
-create_debug_port u_ila_0 probe
-set_property PROBE_TYPE DATA_AND_TRIGGER [get_debug_ports u_ila_0/probe23]
-set_property port_width 1 [get_debug_ports u_ila_0/probe23]
 connect_debug_port u_ila_0/probe23 [get_nets [list vid_fifo_underflow]]
-create_debug_core u_ila_1 ila
-set_property ALL_PROBE_SAME_MU true [get_debug_cores u_ila_1]
-set_property ALL_PROBE_SAME_MU_CNT 1 [get_debug_cores u_ila_1]
-set_property C_ADV_TRIGGER false [get_debug_cores u_ila_1]
-set_property C_DATA_DEPTH 1024 [get_debug_cores u_ila_1]
-set_property C_EN_STRG_QUAL false [get_debug_cores u_ila_1]
-set_property C_INPUT_PIPE_STAGES 0 [get_debug_cores u_ila_1]
-set_property C_TRIGIN_EN false [get_debug_cores u_ila_1]
-set_property C_TRIGOUT_EN false [get_debug_cores u_ila_1]
-set_property port_width 1 [get_debug_ports u_ila_1/clk]
 connect_debug_port u_ila_1/clk [get_nets [list u_clk_wiz_video/inst/clk_out1]]
-set_property PROBE_TYPE DATA_AND_TRIGGER [get_debug_ports u_ila_1/probe0]
-set_property port_width 24 [get_debug_ports u_ila_1/probe0]
 connect_debug_port u_ila_1/probe0 [get_nets [list {vid_data[0]} {vid_data[1]} {vid_data[2]} {vid_data[3]} {vid_data[4]} {vid_data[5]} {vid_data[6]} {vid_data[7]} {vid_data[8]} {vid_data[9]} {vid_data[10]} {vid_data[11]} {vid_data[12]} {vid_data[13]} {vid_data[14]} {vid_data[15]} {vid_data[16]} {vid_data[17]} {vid_data[18]} {vid_data[19]} {vid_data[20]} {vid_data[21]} {vid_data[22]} {vid_data[23]}]]
-create_debug_port u_ila_1 probe
-set_property PROBE_TYPE DATA_AND_TRIGGER [get_debug_ports u_ila_1/probe1]
-set_property port_width 1 [get_debug_ports u_ila_1/probe1]
 connect_debug_port u_ila_1/probe1 [get_nets [list sof_flag_vid]]
-create_debug_port u_ila_1 probe
-set_property PROBE_TYPE DATA_AND_TRIGGER [get_debug_ports u_ila_1/probe2]
-set_property port_width 1 [get_debug_ports u_ila_1/probe2]
 connect_debug_port u_ila_1/probe2 [get_nets [list sof_pulse_vid]]
-create_debug_port u_ila_1 probe
-set_property PROBE_TYPE DATA_AND_TRIGGER [get_debug_ports u_ila_1/probe3]
-set_property port_width 1 [get_debug_ports u_ila_1/probe3]
 connect_debug_port u_ila_1/probe3 [get_nets [list vid_de]]
-create_debug_port u_ila_1 probe
-set_property PROBE_TYPE DATA_AND_TRIGGER [get_debug_ports u_ila_1/probe4]
-set_property port_width 1 [get_debug_ports u_ila_1/probe4]
 connect_debug_port u_ila_1/probe4 [get_nets [list vid_field]]
-create_debug_port u_ila_1 probe
-set_property PROBE_TYPE DATA_AND_TRIGGER [get_debug_ports u_ila_1/probe5]
-set_property port_width 1 [get_debug_ports u_ila_1/probe5]
 connect_debug_port u_ila_1/probe5 [get_nets [list vid_fifo_overflow]]
-create_debug_port u_ila_1 probe
-set_property PROBE_TYPE DATA_AND_TRIGGER [get_debug_ports u_ila_1/probe6]
-set_property port_width 1 [get_debug_ports u_ila_1/probe6]
 connect_debug_port u_ila_1/probe6 [get_nets [list vid_hsync]]
-create_debug_port u_ila_1 probe
-set_property PROBE_TYPE DATA_AND_TRIGGER [get_debug_ports u_ila_1/probe7]
-set_property port_width 1 [get_debug_ports u_ila_1/probe7]
 connect_debug_port u_ila_1/probe7 [get_nets [list vid_vsync]]
-create_debug_port u_ila_1 probe
-set_property PROBE_TYPE DATA_AND_TRIGGER [get_debug_ports u_ila_1/probe8]
-set_property port_width 1 [get_debug_ports u_ila_1/probe8]
 connect_debug_port u_ila_1/probe8 [get_nets [list wait_for_de]]
-create_debug_core u_ila_2 ila
-set_property ALL_PROBE_SAME_MU true [get_debug_cores u_ila_2]
-set_property ALL_PROBE_SAME_MU_CNT 1 [get_debug_cores u_ila_2]
-set_property C_ADV_TRIGGER false [get_debug_cores u_ila_2]
-set_property C_DATA_DEPTH 1024 [get_debug_cores u_ila_2]
-set_property C_EN_STRG_QUAL false [get_debug_cores u_ila_2]
-set_property C_INPUT_PIPE_STAGES 0 [get_debug_cores u_ila_2]
-set_property C_TRIGIN_EN false [get_debug_cores u_ila_2]
-set_property C_TRIGOUT_EN false [get_debug_cores u_ila_2]
-set_property port_width 1 [get_debug_ports u_ila_2/clk]
 connect_debug_port u_ila_2/clk [get_nets [list u_clk_wiz_video/inst/clk_out2]]
-set_property PROBE_TYPE DATA_AND_TRIGGER [get_debug_ports u_ila_2/probe0]
-set_property port_width 1 [get_debug_ports u_ila_2/probe0]
 connect_debug_port u_ila_2/probe0 [get_nets [list pcie_rst_n]]
-set_property C_CLK_INPUT_FREQ_HZ 300000000 [get_debug_cores dbg_hub]
-set_property C_ENABLE_CLK_DIVIDER false [get_debug_cores dbg_hub]
-set_property C_USER_SCAN_CHAIN 1 [get_debug_cores dbg_hub]
 connect_debug_port dbg_hub/clk [get_nets clk_200m_out]
+
