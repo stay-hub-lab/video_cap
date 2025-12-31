@@ -115,12 +115,6 @@ module video_cap_top_pcie (
 (* mark_debug="true" *)    wire        ctrl_test_mode;
 (* mark_debug="true" *)    wire        sts_idle;
 (* mark_debug="true" *)    wire        sts_fifo_overflow;
-
-    // v_vid_in_axi4s overflow/underflow are generated in the video-side logic;
-    // synchronize into axi_aclk domain before use/status to avoid CDC timing storms.
-(* mark_debug="true" *)    wire        vid_fifo_overflow_axi;
-(* mark_debug="true" *)    wire        vid_fifo_underflow_axi;
-(* mark_debug="true" *)    reg         vid_fifo_error_sticky;
     
     // Heartbeat counter
     reg [26:0]  heartbeat_cnt;
@@ -327,9 +321,8 @@ module video_cap_top_pcie (
         .irq_error          ()     // Unused
     );
     
-    // usr_irq_req is driven by irq_req_reg (see VSYNC Interrupt Generation section)
+    // usr_irq_req 由 video_cap_c2h_bridge 产生（VSYNC/帧完成等 user IRQ）
     assign sts_idle = ~ctrl_enable;
-    assign sts_fifo_overflow = vid_fifo_error_sticky;
     
     //==========================================================================
     // CDC Synchronizers for control signals (AXI clock -> Video clock)
@@ -476,6 +469,18 @@ module video_cap_top_pcie (
         .overflow              (vid_fifo_overflow),
         .underflow             (vid_fifo_underflow)
     );
+
+`ifdef VIDEO_CAP_KEEP_LEGACY_GLUE
+    // 旧版“胶水逻辑”保留：便于对照/回退（默认不启用）。
+    // 默认构建路径使用下方 `else` 的 video_cap_c2h_bridge，把 top 变薄并便于后续 BD 化。
+
+    // v_vid_in_axi4s overflow/underflow 是视频侧逻辑产生的；需要先同步到 axi_aclk 域再使用。
+(* mark_debug="true" *)    wire        vid_fifo_overflow_axi;
+(* mark_debug="true" *)    wire        vid_fifo_underflow_axi;
+(* mark_debug="true" *)    reg         vid_fifo_error_sticky;
+
+    // STATUS：sticky 错误标志（在 disable/soft-reset 时清零）
+    assign sts_fifo_overflow = vid_fifo_error_sticky;
 
     // CDC: bring overflow/underflow into axi_aclk domain
     cdc_sync #(.WIDTH(1), .STAGES(2)) u_cdc_vid_overflow (
@@ -867,6 +872,43 @@ module video_cap_top_pcie (
     end
     
     assign usr_irq_req = irq_req_reg;
+`else
+    //==========================================================================
+    // v_vid_in_axi4s -> XDMA C2H 适配桥（封装：帧对齐/打包/FIFO/IRQ/状态）
+    //==========================================================================
+    video_cap_c2h_bridge #(
+        .FRAME_LINES               (1080),
+        .C2H_BRAM_FIFO_DEPTH_WORDS (4096)   // 4096 * 16B = 64KB
+    ) u_video_cap_c2h_bridge (
+        .axi_aclk           (axi_aclk),
+        .axi_aresetn        (axi_aresetn),
+
+        .ctrl_enable        (ctrl_enable),
+        .ctrl_soft_reset    (ctrl_soft_reset),
+
+        .vid_vsync          (vid_vsync),
+
+        .axis_vid_tdata     (axis_vid_tdata),
+        .axis_vid_tvalid    (axis_vid_tvalid),
+        .axis_vid_tready    (axis_vid_tready),
+        .axis_vid_tlast     (axis_vid_tlast),
+        .axis_vid_tuser     (axis_vid_tuser),
+
+        .vid_fifo_overflow  (vid_fifo_overflow),
+        .vid_fifo_underflow (vid_fifo_underflow),
+
+        .s_axis_c2h_tdata   (s_axis_c2h_tdata_0),
+        .s_axis_c2h_tkeep   (s_axis_c2h_tkeep_0),
+        .s_axis_c2h_tlast   (s_axis_c2h_tlast_0),
+        .s_axis_c2h_tvalid  (s_axis_c2h_tvalid_0),
+        .s_axis_c2h_tready  (s_axis_c2h_tready_0),
+
+        .usr_irq_ack        (usr_irq_ack),
+        .usr_irq_req        (usr_irq_req),
+
+        .sts_fifo_overflow  (sts_fifo_overflow)
+    );
+`endif
     
     //==========================================================================
     // Heartbeat LED
