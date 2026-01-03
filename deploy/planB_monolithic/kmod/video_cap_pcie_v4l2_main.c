@@ -49,6 +49,46 @@
 #define VIDEO_FRAME_RATE_60  60
 #define XDMA_USER_IRQ_MAX    16U
 
+static bool video_cap_pixfmt_supported(u32 pixfmt)
+{
+	switch (pixfmt) {
+	case V4L2_PIX_FMT_XBGR32: /* ffplay/v4l2-ctl 显示为 fourcc 'XR24'，对应像素格式 bgr0 */
+	case V4L2_PIX_FMT_YUYV:   /* fourcc 'YUYV'，对应像素格式 yuyv422 */
+		return true;
+	default:
+		return false;
+	}
+}
+
+static u32 video_cap_pixfmt_to_fpga_vid_fmt(u32 pixfmt)
+{
+	switch (pixfmt) {
+	case V4L2_PIX_FMT_YUYV:
+		return VID_FMT_YUV422;
+	case V4L2_PIX_FMT_XBGR32:
+	default:
+		return VID_FMT_RGB888;
+	}
+}
+
+static void video_cap_fill_pix_format(struct v4l2_pix_format *pix, u32 width, u32 height, u32 pixfmt)
+{
+	pix->width = width;
+	pix->height = height;
+	pix->pixelformat = pixfmt;
+	pix->field = V4L2_FIELD_NONE;
+
+	if (pixfmt == V4L2_PIX_FMT_YUYV) {
+		pix->bytesperline = width * 2;
+		pix->sizeimage = width * height * 2;
+		pix->colorspace = V4L2_COLORSPACE_REC709;
+	} else {
+		pix->bytesperline = width * 4;
+		pix->sizeimage = width * height * 4;
+		pix->colorspace = V4L2_COLORSPACE_SRGB;
+	}
+}
+
 /*
  * 自定义 V4L2 controls ID：
  * 一些内核版本对 “PRIVATE_BASE(0x08000000)” 的 class 解析不兼容，会导致 -ERANGE。
@@ -73,6 +113,7 @@ struct video_cap_stats {
 	atomic64_t dma_submit;
 	atomic64_t dma_error;
 	atomic64_t dma_short;
+	atomic64_t dma_trim;
 };
 
 /* 单个缓冲区的管理信息（vb2 负责实际内存页的分配与映射）。 */
@@ -164,19 +205,21 @@ static void video_cap_stats_init(struct video_cap_dev *dev)
 	atomic64_set(&dev->stats.dma_submit, 0);
 	atomic64_set(&dev->stats.dma_error, 0);
 	atomic64_set(&dev->stats.dma_short, 0);
+	atomic64_set(&dev->stats.dma_trim, 0);
 }
 
 static void video_cap_stats_dump(struct video_cap_dev *dev, const char *tag)
 {
 	dev_info(&dev->pdev->dev,
-		 "%s: vsync_isr=%lld vsync_wait=%lld vsync_timeout=%lld dma_submit=%lld dma_error=%lld dma_short=%lld\n",
+		 "%s: vsync_isr=%lld vsync_wait=%lld vsync_timeout=%lld dma_submit=%lld dma_error=%lld dma_short=%lld dma_trim=%lld\n",
 		 tag,
 		 (long long)atomic64_read(&dev->stats.vsync_isr),
 		 (long long)atomic64_read(&dev->stats.vsync_wait),
 		 (long long)atomic64_read(&dev->stats.vsync_timeout),
 		 (long long)atomic64_read(&dev->stats.dma_submit),
 		 (long long)atomic64_read(&dev->stats.dma_error),
-		 (long long)atomic64_read(&dev->stats.dma_short));
+		 (long long)atomic64_read(&dev->stats.dma_short),
+		 (long long)atomic64_read(&dev->stats.dma_trim));
 }
 
 static int video_cap_s_ctrl(struct v4l2_ctrl *ctrl)
@@ -344,6 +387,17 @@ static void video_cap_reg_write32(struct video_cap_dev *dev, u32 off, u32 val)
 	iowrite32(val, (u8 __iomem *)dev->user_regs + off);
 }
 
+static void video_cap_apply_hw_format(struct video_cap_dev *dev)
+{
+	u32 fmt;
+
+	if (!dev->user_regs)
+		return;
+
+	fmt = video_cap_pixfmt_to_fpga_vid_fmt(dev->pixfmt);
+	video_cap_reg_write32(dev, REG_VID_FORMAT, fmt);
+}
+
 /* 使能/关闭 FPGA 采集（可选打开测试图）。 */
 static int video_cap_enable(struct video_cap_dev *dev, bool enable)
 {
@@ -353,6 +407,8 @@ static int video_cap_enable(struct video_cap_dev *dev, bool enable)
 		return -ENODEV;
 
 	if (enable) {
+		/* enable 前把像素打包格式同步给 FPGA（避免用户空间未显式 S_FMT 的情况） */
+		video_cap_apply_hw_format(dev);
 		ctrl |= CTRL_ENABLE;
 		if (dev->test_pattern)
 			ctrl |= CTRL_TEST_MODE;
@@ -416,7 +472,14 @@ static int video_cap_wait_vsync(struct video_cap_dev *dev, u64 *last_seq)
 static int video_cap_dma_read_frame(struct video_cap_dev *dev, struct vb2_buffer *vb)
 {
 	struct sg_table *sgt;
+	struct scatterlist *sg, *last_sg = NULL;
 	ssize_t n;
+	u32 orig_nents;
+	u32 used_nents;
+	u32 last_orig_len = 0;
+	u32 last_orig_dma_len = 0;
+	size_t remaining;
+	bool trim_applied = false;
 
 	sgt = vb2_dma_sg_plane_desc(vb, 0);
 	if (!sgt)
@@ -427,7 +490,47 @@ static int video_cap_dma_read_frame(struct video_cap_dev *dev, struct vb2_buffer
 	 *（这里我们设置为 &pdev->dev），所以 dma_mapped=true。
 	 */
 	atomic64_inc(&dev->stats.dma_submit);
+	/*
+	 * vb2-dma-sg buffers are often page-aligned, so the sg_table total DMA
+	 * length can be larger than dev->sizeimage. The FPGA only produces
+	 * sizeimage bytes per frame, so cap the DMA transfer length to exactly
+	 * dev->sizeimage to avoid timeouts/short frames.
+	 */
+	orig_nents = sgt->nents;
+	remaining = dev->sizeimage;
+	sg = sgt->sgl;
+	for (used_nents = 0; used_nents < orig_nents && sg; used_nents++, sg = sg_next(sg)) {
+		u32 seg_len = sg_dma_len(sg);
+
+		if (seg_len >= remaining) {
+			if (seg_len != remaining || (used_nents + 1) < orig_nents)
+				trim_applied = true;
+			last_sg = sg;
+			last_orig_len = sg->length;
+			last_orig_dma_len = sg_dma_len(sg);
+			sg->length = (u32)remaining;
+			sg_dma_len(sg) = (u32)remaining;
+			remaining = 0;
+			used_nents++; /* include last_sg */
+			break;
+		}
+		remaining -= seg_len;
+	}
+	if (remaining != 0)
+		return -EFAULT;
+	sgt->nents = used_nents;
+	if (trim_applied)
+		atomic64_inc(&dev->stats.dma_trim);
+
 	n = xdma_xfer_submit(dev->xdev, dev->c2h_channel, false, 0, sgt, true, 1000);
+
+	/* Restore sg_table for vb2 reuse */
+	sgt->nents = orig_nents;
+	if (last_sg) {
+		last_sg->length = last_orig_len;
+		sg_dma_len(last_sg) = last_orig_dma_len;
+	}
+
 	if (n < 0) {
 		atomic64_inc(&dev->stats.dma_error);
 		return (int)n;
@@ -766,11 +869,16 @@ static int video_cap_enum_fmt_vid_cap(struct file *file, void *priv, struct v4l2
 	(void)file;
 	(void)priv;
 
-	if (f->index != 0)
+	switch (f->index) {
+	case 0:
+		f->pixelformat = V4L2_PIX_FMT_XBGR32;
+		return 0;
+	case 1:
+		f->pixelformat = V4L2_PIX_FMT_YUYV;
+		return 0;
+	default:
 		return -EINVAL;
-
-	f->pixelformat = V4L2_PIX_FMT_XBGR32;
-	return 0;
+	}
 }
 
 /* V4L2：获取当前格式。 */
@@ -786,23 +894,24 @@ static int video_cap_g_fmt_vid_cap(struct file *file, void *priv, struct v4l2_fo
 	f->fmt.pix.field = V4L2_FIELD_NONE;
 	f->fmt.pix.bytesperline = dev->bytesperline;
 	f->fmt.pix.sizeimage = dev->sizeimage;
-	f->fmt.pix.colorspace = V4L2_COLORSPACE_SRGB;
+	f->fmt.pix.colorspace =
+		(dev->pixfmt == V4L2_PIX_FMT_YUYV) ? V4L2_COLORSPACE_REC709 : V4L2_COLORSPACE_SRGB;
 	return 0;
 }
 
 /* V4L2：校验请求格式（当前直接固定到默认分辨率/格式）。 */
 static int video_cap_try_fmt_vid_cap(struct file *file, void *priv, struct v4l2_format *f)
 {
+	u32 pixfmt;
+
 	(void)file;
 	(void)priv;
 
-	f->fmt.pix.width = VIDEO_WIDTH_DEFAULT;
-	f->fmt.pix.height = VIDEO_HEIGHT_DEFAULT;
-	f->fmt.pix.pixelformat = V4L2_PIX_FMT_XBGR32;
-	f->fmt.pix.field = V4L2_FIELD_NONE;
-	f->fmt.pix.bytesperline = VIDEO_WIDTH_DEFAULT * 4;
-	f->fmt.pix.sizeimage = VIDEO_WIDTH_DEFAULT * VIDEO_HEIGHT_DEFAULT * 4;
-	f->fmt.pix.colorspace = V4L2_COLORSPACE_SRGB;
+	pixfmt = f->fmt.pix.pixelformat;
+	if (!video_cap_pixfmt_supported(pixfmt))
+		pixfmt = V4L2_PIX_FMT_XBGR32;
+
+	video_cap_fill_pix_format(&f->fmt.pix, VIDEO_WIDTH_DEFAULT, VIDEO_HEIGHT_DEFAULT, pixfmt);
 	return 0;
 }
 
@@ -824,6 +933,9 @@ static int video_cap_s_fmt_vid_cap(struct file *file, void *priv, struct v4l2_fo
 	dev->height = f->fmt.pix.height;
 	dev->bytesperline = f->fmt.pix.bytesperline;
 	dev->sizeimage = f->fmt.pix.sizeimage;
+
+	/* 同步到 FPGA：VID_FMT（0x0100） */
+	video_cap_apply_hw_format(dev);
 	return 0;
 }
 

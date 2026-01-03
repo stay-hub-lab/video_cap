@@ -108,11 +108,19 @@ module video_cap_top_pcie (
 (* mark_debug="true" *)    wire        axis_vid_tready;
 (* mark_debug="true" *)    wire        axis_vid_tlast;
 (* mark_debug="true" *)    wire        axis_vid_tuser;
+
+    // AXIS 像素适配后（32-bit/word，XBGR32 / YUYV422 都可用此“字节流 word”接口）
+(* mark_debug="true" *)    wire [31:0] axis_pix_tdata;
+(* mark_debug="true" *)    wire        axis_pix_tvalid;
+(* mark_debug="true" *)    wire        axis_pix_tready;
+(* mark_debug="true" *)    wire        axis_pix_tlast;
+(* mark_debug="true" *)    wire        axis_pix_tuser;
     
     // Control and status signals
 (* mark_debug="true" *)    wire        ctrl_enable;
 (* mark_debug="true" *)    wire        ctrl_soft_reset;
 (* mark_debug="true" *)    wire        ctrl_test_mode;
+(* mark_debug="true" *)    wire [7:0]  ctrl_vid_format;
 (* mark_debug="true" *)    wire        sts_idle;
 (* mark_debug="true" *)    wire        sts_fifo_overflow;
     
@@ -309,6 +317,7 @@ module video_cap_top_pcie (
         .ctrl_enable        (ctrl_enable),
         .ctrl_soft_reset    (ctrl_soft_reset),
         .ctrl_test_mode     (ctrl_test_mode),
+        .ctrl_vid_format    (ctrl_vid_format),
         
         // Status Inputs
         .sts_idle           (sts_idle),
@@ -874,8 +883,29 @@ module video_cap_top_pcie (
     assign usr_irq_req = irq_req_reg;
 `else
     //==========================================================================
-    // v_vid_in_axi4s -> XDMA C2H 适配桥（封装：帧对齐/打包/FIFO/IRQ/状态）
+    // v_vid_in_axi4s -> (像素格式适配) -> XDMA C2H 适配桥
+    // - bridge 只负责 DMA 打包/帧对齐/深 FIFO/IRQ/状态
+    // - 色彩空间转换（RGB<->YUV）不在 bridge 内做，后续建议在 BD 里插 AXIS 侧 CSC/IP
     //==========================================================================
+
+    // RGB888(24) -> XBGR32(32)：BGR0（用于 XR24 / bgr0）
+    axis_rgb888_to_xbgr32 u_axis_rgb888_to_xbgr32 (
+        .aclk           (axi_aclk),
+        .aresetn        (axi_aresetn),
+
+        .s_axis_tdata   (axis_vid_tdata),
+        .s_axis_tvalid  (axis_vid_tvalid),
+        .s_axis_tready  (axis_vid_tready),
+        .s_axis_tlast   (axis_vid_tlast),
+        .s_axis_tuser   (axis_vid_tuser),
+
+        .m_axis_tdata   (axis_pix_tdata),
+        .m_axis_tvalid  (axis_pix_tvalid),
+        .m_axis_tready  (axis_pix_tready),
+        .m_axis_tlast   (axis_pix_tlast),
+        .m_axis_tuser   (axis_pix_tuser)
+    );
+
     video_cap_c2h_bridge #(
         .FRAME_LINES               (1080),
         .C2H_BRAM_FIFO_DEPTH_WORDS (4096)   // 4096 * 16B = 64KB
@@ -888,11 +918,11 @@ module video_cap_top_pcie (
 
         .vid_vsync          (vid_vsync),
 
-        .axis_vid_tdata     (axis_vid_tdata),
-        .axis_vid_tvalid    (axis_vid_tvalid),
-        .axis_vid_tready    (axis_vid_tready),
-        .axis_vid_tlast     (axis_vid_tlast),
-        .axis_vid_tuser     (axis_vid_tuser),
+        .axis_pix_tdata     (axis_pix_tdata),
+        .axis_pix_tvalid    (axis_pix_tvalid),
+        .axis_pix_tready    (axis_pix_tready),
+        .axis_pix_tlast     (axis_pix_tlast),
+        .axis_pix_tuser     (axis_pix_tuser),
 
         .vid_fifo_overflow  (vid_fifo_overflow),
         .vid_fifo_underflow (vid_fifo_underflow),

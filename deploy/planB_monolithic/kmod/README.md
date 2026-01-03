@@ -36,6 +36,13 @@ v4l2-ctl -d /dev/video0 --all
 ffplay -f v4l2 -video_size 1920x1080 -input_format bgr0 -i /dev/video0
 ```
 
+切换到 YUYV（YUV422）：
+
+```bash
+v4l2-ctl -d /dev/video0 --set-fmt-video=width=1920,height=1080,pixelformat=YUYV
+ffplay -f v4l2 -video_size 1920x1080 -input_format yuyv422 -i /dev/video0
+```
+
 ## 参数说明
 
 ### insmod 参数（module_param）
@@ -55,6 +62,10 @@ ffplay -f v4l2 -video_size 1920x1080 -input_format bgr0 -i /dev/video0
 - 如果出现 `vsync timeout`，优先检查 FPGA 是否真的输出了对应 user IRQ（以及 `irq_index` 是否匹配），并适当调大 VSYNC 超时。
 
 运行时参数（V4L2 controls）：
+
+### YUYV / “buffer corrupted” 排查
+- 如果 `ffplay/ffmpeg` 提示 `Dequeued v4l2 buffer contains corrupted data`，同时 `dmesg` 出现 `xdma_xfer_submit ... timed out` / `dma_short`，大多是 vb2-dma-sg 的 buffer 按 PAGE_SIZE 向上取整，导致 `sg_table` 总 DMA 长度 > `sizeimage`。
+- 解决办法：驱动侧把提交给 XDMA 的 DMA 长度裁剪到精确的 `sizeimage`（否则 XDMA 会等待 padding 区而超时）。
 - 先查看支持的控件：`v4l2-ctl -d /dev/video0 --list-ctrls`
 - 设置测试图：`v4l2-ctl -d /dev/video0 --set-ctrl=video_cap_test_pattern=1`
 - 设置 warm-up 丢帧数：`v4l2-ctl -d /dev/video0 --set-ctrl=video_cap_skip=2`
@@ -73,4 +84,3 @@ sudo rmmod video_cap_pcie_v4l2
 
 - `kmod/xdma/` 已包含完整 XDMA 源码拷贝（把整个 `deploy/planB_monolithic/` 拷贝到 Linux 即可独立编译）。
 - 这不是把“官方 xdma.ko”当依赖，而是把其核心代码直接编译进本模块中；因此不需要先加载 `xdma.ko`。
-

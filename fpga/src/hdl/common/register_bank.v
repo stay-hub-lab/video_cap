@@ -56,6 +56,7 @@ module register_bank (
     output wire         ctrl_enable,        // 全局使能
     output wire         ctrl_soft_reset,    // 软复位
     output wire         ctrl_test_mode,     // 测试模式
+    output wire [7:0]   ctrl_vid_format,    // 视频格式（VID_FMT[7:0]）
     
     //--------------------------------------------------------------------------
     // 状态输入
@@ -299,6 +300,7 @@ module register_bank (
     
     assign ctrl_enable     = reg_control[0];
     assign ctrl_test_mode  = reg_control[2];
+    assign ctrl_vid_format = reg_vid_format[7:0];
     
     // 软复位脉冲生成 (写1自清零)
     always @(posedge aclk or negedge aresetn) begin

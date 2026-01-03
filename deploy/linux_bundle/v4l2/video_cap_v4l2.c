@@ -244,7 +244,13 @@ static int video_cap_wait_vsync(struct video_cap_v4l2_dev *dev)
 static int video_cap_dma_read_frame(struct video_cap_v4l2_dev *dev, struct vb2_buffer *vb)
 {
 	struct sg_table *sgt;
+	struct scatterlist *sg, *last_sg = NULL;
 	ssize_t n;
+	u32 orig_nents;
+	u32 used_nents;
+	u32 last_orig_len = 0;
+	u32 last_orig_dma_len = 0;
+	size_t remaining;
 
 	sgt = vb2_dma_sg_plane_desc(vb, 0);
 	if (!sgt)
@@ -254,7 +260,37 @@ static int video_cap_dma_read_frame(struct video_cap_v4l2_dev *dev, struct vb2_b
 	 * vb2-dma-sg provides an sg_table already mapped for vb2_queue.dev
 	 * (which we set to &pdev->dev), so pass dma_mapped=true.
 	 */
+	orig_nents = sgt->nents;
+	remaining = dev->sizeimage;
+	sg = sgt->sgl;
+	for (used_nents = 0; used_nents < orig_nents && sg; used_nents++, sg = sg_next(sg)) {
+		u32 seg_len = sg_dma_len(sg);
+
+		if (seg_len >= remaining) {
+			last_sg = sg;
+			last_orig_len = sg->length;
+			last_orig_dma_len = sg_dma_len(sg);
+			sg->length = (u32)remaining;
+			sg_dma_len(sg) = (u32)remaining;
+			remaining = 0;
+			used_nents++; /* include last_sg */
+			break;
+		}
+		remaining -= seg_len;
+	}
+	if (remaining != 0)
+		return -EFAULT;
+	sgt->nents = used_nents;
+
 	n = xdma_xfer_submit(dev->xdev, dev->c2h_channel, false, 0, sgt, true, 1000);
+
+	/* Restore sg_table for vb2 reuse */
+	sgt->nents = orig_nents;
+	if (last_sg) {
+		last_sg->length = last_orig_len;
+		sg_dma_len(last_sg) = last_orig_dma_len;
+	}
+
 	if (n < 0)
 		return (int)n;
 	if (n != dev->sizeimage)

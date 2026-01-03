@@ -1,62 +1,73 @@
 {
    "ActiveEmotionalView":"Default View",
-   "Default View_ScaleFactor":"3.40533",
-   "Default View_TopLeft":"1320,538",
+   "Default View_ScaleFactor":"1.14407",
+   "Default View_TopLeft":"401,-68",
    "DisplayPinAutomationMissing":"1",
    "DisplayPinsOfHiddenNets":"1",
    "DisplayTieOff":"1",
    "ExpandedHierarchyInLayout":"",
-   "guistr":"# # String gsaved with Nlview 7.8.0 2024-04-26 e1825d835c VDI=44 GEI=38 GUI=JA:21.0 threadsafe
+   "guistr":"# # String gsaved with Nlview 7.8.0 2024-04-26 e1825d835c VDI=44 GEI=38 GUI=JA:21.0
 #  -string -flagsOSRD
-preplace port sys -pg 1 -lvl 0 -x -10 -y 720 -defaultsOSRD
-preplace port pci_exp -pg 1 -lvl 10 -x 2920 -y 720 -defaultsOSRD
-preplace port port-id_sys_rst_n -pg 1 -lvl 0 -x -10 -y 780 -defaultsOSRD
-preplace port port-id_sys_clk_200m -pg 1 -lvl 0 -x -10 -y 90 -defaultsOSRD
-preplace inst video_cap_c2h_bridge_0 -pg 1 -lvl 6 -x 1560 -y 220 -defaultsOSRD
-preplace inst color_bar_0 -pg 1 -lvl 3 -x 670 -y 110 -defaultsOSRD
-preplace inst register_bank_0 -pg 1 -lvl 9 -x 2730 -y 420 -defaultsOSRD
-preplace inst xdma_0 -pg 1 -lvl 7 -x 1983 -y 770 -defaultsOSRD
-preplace inst clk_wiz_0 -pg 1 -lvl 1 -x 110 -y 90 -defaultsOSRD
-preplace inst v_vid_in_axi4s_0 -pg 1 -lvl 5 -x 1170 -y 220 -defaultsOSRD
-preplace inst axi_interconnect_0 -pg 1 -lvl 8 -x 2350 -y 600 -defaultsOSRD
-preplace inst util_ds_buf_0 -pg 1 -lvl 6 -x 1560 -y 720 -defaultsOSRD
-preplace inst util_vector_logic_0 -pg 1 -lvl 8 -x 2350 -y 340 -defaultsOSRD
-preplace inst vcc -pg 1 -lvl 8 -x 2350 -y 440 -defaultsOSRD
-preplace inst proc_sys_reset_1 -pg 1 -lvl 2 -x 390 -y 120 -defaultsOSRD -resize 300 156
-preplace inst xlconcat_0 -pg 1 -lvl 4 -x 890 -y 180 -defaultsOSRD
-preplace netloc color_bar_0_hs 1 3 2 N 60 1000
-preplace netloc color_bar_0_vs 1 3 3 N 80 1010 10 1380J
-preplace netloc color_bar_0_de 1 3 2 N 100 N
-preplace netloc Net 1 1 4 210 20 570 260 NJ 260 990
-preplace netloc xdma_0_axi_aclk 1 4 5 1020 20 1370 70 NJ 70 2180 270 2540J
-preplace netloc xdma_0_axi_aresetn 1 4 5 1020 420 1360 80 NJ 80 2170 260 2550J
-preplace netloc video_cap_c2h_bridge_0_usr_irq_req 1 6 1 1730 220n
-preplace netloc sys_rst_n_0_1 1 0 7 NJ 780 NJ 780 NJ 780 NJ 780 990 790 NJ 790 1740J
-preplace netloc util_ds_buf_0_IBUF_OUT 1 6 1 1720J 710n
-preplace netloc clk_in1_0_1 1 0 1 NJ 90
-preplace netloc v_vid_in_axi4s_0_overflow 1 5 1 1320 240n
-preplace netloc v_vid_in_axi4s_0_underflow 1 5 1 1310 260n
-preplace netloc register_bank_0_ctrl_soft_reset 1 5 5 1390 50 NJ 50 NJ 50 NJ 50 2890
-preplace netloc video_cap_c2h_bridge_0_sts_fifo_overflow 1 6 3 NJ 240 NJ 240 2530
-preplace netloc xdma_0_user_lnk_up 1 7 2 2190J 280 2500
-preplace netloc register_bank_0_ctrl_enable 1 5 5 1400 60 NJ 60 2200 230 NJ 230 2880
-preplace netloc util_vector_logic_0_Res 1 8 1 2510J 340n
-preplace netloc xlconstant_0_dout 1 8 1 NJ 440
-preplace netloc clk_wiz_0_locked 1 1 1 N 100
-preplace netloc proc_sys_reset_1_peripheral_reset 1 2 1 N 120
-preplace netloc xdma_0_usr_irq_ack 1 5 3 1400 360 NJ 360 2150
-preplace netloc xlconcat_0_dout 1 4 1 990 120n
+preplace port sys -pg 1 -lvl 0 -x -130 -y 720 -defaultsOSRD
+preplace port pci_exp -pg 1 -lvl 12 -x 3710 -y 720 -defaultsOSRD
+preplace port port-id_sys_rst_n -pg 1 -lvl 0 -x -130 -y 780 -defaultsOSRD
+preplace port port-id_sys_clk_200m -pg 1 -lvl 0 -x -130 -y 90 -defaultsOSRD
+preplace inst video_cap_c2h_bridge_0 -pg 1 -lvl 7 -x 2010 -y 540 -defaultsOSRD
+preplace inst color_bar_0 -pg 1 -lvl 3 -x 690 -y 110 -defaultsOSRD
+preplace inst register_bank_0 -pg 1 -lvl 11 -x 3517 -y 420 -defaultsOSRD
+preplace inst xdma_0 -pg 1 -lvl 9 -x 2775 -y 770 -defaultsOSRD
+preplace inst clk_wiz_0 -pg 1 -lvl 1 -x 60 -y 50 -defaultsOSRD
+preplace inst v_vid_in_axi4s_0 -pg 1 -lvl 5 -x 1290 -y 180 -defaultsOSRD
+preplace inst axi_interconnect_0 -pg 1 -lvl 10 -x 3134 -y 600 -defaultsOSRD
+preplace inst util_ds_buf_0 -pg 1 -lvl 8 -x 2360 -y 720 -defaultsOSRD
+preplace inst util_vector_logic_0 -pg 1 -lvl 10 -x 3134 -y 340 -defaultsOSRD
+preplace inst vcc -pg 1 -lvl 10 -x 3134 -y 440 -defaultsOSRD
+preplace inst proc_sys_reset_1 -pg 1 -lvl 2 -x 410 -y 120 -defaultsOSRD -resize 300 156
+preplace inst xlconcat_0 -pg 1 -lvl 4 -x 930 -y 180 -defaultsOSRD
+preplace inst color_bar_yuv422_0 -pg 1 -lvl 4 -x 930 -y 510 -defaultsOSRD
+preplace inst v_vid_in_axi4s_1 -pg 1 -lvl 5 -x 1290 -y 530 -defaultsOSRD -resize 250 322
+preplace inst axis_rgb888_to_xbgr32_0 -pg 1 -lvl 6 -x 1636 -y 150 -defaultsOSRD
+preplace inst axis_dwidth_converter_0 -pg 1 -lvl 6 -x 1636 -y 510 -defaultsOSRD
+preplace netloc Net 1 1 4 230 20 590 0 830J 100 1070
+preplace netloc clk_in1_0_1 1 0 1 -110J 50n
+preplace netloc clk_wiz_0_locked 1 1 1 150 60n
+preplace netloc color_bar_0_de 1 3 2 790 90 N
+preplace netloc color_bar_0_hs 1 3 2 N 60 1110
 preplace netloc color_bar_0_rgb_b 1 3 1 N 160
-preplace netloc color_bar_0_rgb_g 1 3 1 770 140n
-preplace netloc color_bar_0_rgb_r 1 3 1 780 120n
-preplace netloc v_vid_in_axi4s_0_video_out 1 5 1 1320 140n
-preplace netloc S00_AXI_1 1 7 1 2200 540n
-preplace netloc axi_interconnect_0_M00_AXI 1 8 1 2520 360n
-preplace netloc video_cap_c2h_bridge_0_s_axis_c2h 1 6 1 1740 200n
-preplace netloc CLK_IN_D_0_1 1 0 6 NJ 720 NJ 720 NJ 720 NJ 720 N 720 NJ
-preplace netloc xdma_0_pcie_mgt 1 7 3 NJ 720 NJ 720 NJ
-levelinfo -pg 1 -10 110 390 670 890 1170 1560 1983 2350 2730 2920
-pagesize -pg 1 -db -bbox -sgen -150 0 3170 1090
+preplace netloc color_bar_0_rgb_g 1 3 1 790 140n
+preplace netloc color_bar_0_rgb_r 1 3 1 800 120n
+preplace netloc color_bar_0_vs 1 3 2 N 80 1080
+preplace netloc color_bar_yuv422_0_data 1 4 1 1110 450n
+preplace netloc color_bar_yuv422_0_de 1 4 1 1090 430n
+preplace netloc color_bar_yuv422_0_hs 1 4 1 1100 470n
+preplace netloc color_bar_yuv422_0_vs 1 4 3 1080 350 N 350 1760
+preplace netloc proc_sys_reset_1_peripheral_reset 1 2 2 590 520 N
+preplace netloc register_bank_0_ctrl_enable 1 6 6 1850 380 N 380 NJ 380 2944 250 NJ 250 3680
+preplace netloc register_bank_0_ctrl_soft_reset 1 6 6 1840 230 N 230 NJ 230 NJ 230 NJ 230 3690
+preplace netloc register_bank_0_ctrl_vid_format 1 11 1 N 430
+preplace netloc sys_rst_n_0_1 1 0 9 NJ 780 NJ 780 NJ 780 NJ 780 N 780 NJ 780 N 780 2170 790 2520J
+preplace netloc util_ds_buf_0_IBUF_OUT 1 8 1 2510J 710n
+preplace netloc util_vector_logic_0_Res 1 10 1 3300J 340n
+preplace netloc v_vid_in_axi4s_1_overflow 1 5 2 1440 590 1810J
+preplace netloc v_vid_in_axi4s_1_underflow 1 5 2 1470 600 NJ
+preplace netloc video_cap_c2h_bridge_0_sts_fifo_overflow 1 7 4 2170 240 NJ 240 NJ 240 3330
+preplace netloc video_cap_c2h_bridge_0_usr_irq_req 1 7 2 2180 800 N
+preplace netloc xdma_0_axi_aclk 1 4 7 1120 0 1516 390 1830 390 N 390 NJ 390 2954 260 3340J
+preplace netloc xdma_0_axi_aresetn 1 4 7 1130 10 1496 400 1820 400 N 400 NJ 400 2984 270 3320J
+preplace netloc xdma_0_user_lnk_up 1 9 2 2964J 280 3290
+preplace netloc xdma_0_usr_irq_ack 1 6 4 1850 680 2190 620 NJ 620 2940
+preplace netloc xlconcat_0_dout 1 4 1 1030 110n
+preplace netloc xlconstant_0_dout 1 10 1 NJ 440
+preplace netloc CLK_IN_D_0_1 1 0 8 NJ 720 NJ 720 NJ 720 NJ 720 N 720 NJ 720 N 720 N
+preplace netloc S00_AXI_1 1 9 1 2974 540n
+preplace netloc axi_interconnect_0_M00_AXI 1 10 1 3310 360n
+preplace netloc axis_dwidth_converter_0_M_AXIS 1 6 1 1770 460n
+preplace netloc v_vid_in_axi4s_0_video_out 1 5 1 1440 130n
+preplace netloc v_vid_in_axi4s_1_video_out 1 5 1 1506 430n
+preplace netloc video_cap_c2h_bridge_0_s_axis_c2h 1 7 2 N 520 2520
+preplace netloc xdma_0_pcie_mgt 1 9 3 NJ 720 NJ 720 NJ
+levelinfo -pg 1 -130 60 410 690 930 1290 1636 2010 2360 2775 3134 3517 3710
+pagesize -pg 1 -db -bbox -sgen -270 -20 3930 1090
 "
 }
 {

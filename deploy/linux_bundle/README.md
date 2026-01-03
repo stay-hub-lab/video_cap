@@ -164,6 +164,8 @@ ffplay -f v4l2 -video_size 1920x1080 -input_format bgr0 -i /dev/video0
 - 直接调用 XDMA：
   - `xdma_xfer_submit(dev->xdev, dev->c2h_channel, false, 0, sgt, true, 1000)`
 
+注意：vb2-dma-sg 的 buffer 往往会按 PAGE_SIZE 向上取整，导致 `sg_table` 的总 DMA 长度可能大于 `sizeimage`。驱动在提交 DMA 时必须把长度裁剪到精确的 `sizeimage`，否则 FPGA 只输出 `sizeimage` 字节时，XDMA 会等待 padding 区导致超时/short frame。
+
 这里的关键点是最后两个参数：
 - `dma_mapped=true`：vb2 已经为 `vb_queue.dev = &pdev->dev` 做过 DMA map，因此 XDMA 不需要再次 `dma_map_sg()`。
 - `timeout_ms`：XDMA 里目前并不严格使用该超时（以源码实现为准）。
@@ -209,4 +211,3 @@ XDMA 侧 `xdma_xfer_submit()`（`xdma/libxdma.c`）会：
     ```
   - 看 `/proc/interrupts` 里 XDMA MSI/MSI-X 计数是否增长：`grep xdma /proc/interrupts | head -n 40`
 - `VIDIOC_STREAMON Permission denied`：用 `sudo`，或把用户加入 `video` 组：`sudo usermod -aG video $USER`（重新登录生效）。
-

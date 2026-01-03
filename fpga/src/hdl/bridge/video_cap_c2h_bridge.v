@@ -1,21 +1,28 @@
 //------------------------------------------------------------------------------
 // Module: video_cap_c2h_bridge
 // Description:
-//   将视频侧 v_vid_in_axi4s 输出的 24-bit AXI4-Stream，进行帧对齐/门控/打包/缓冲，
-//   最终输出给 XDMA C2H 的 128-bit AXI4-Stream，同时生成 VSYNC/帧完成等 user IRQ。
+//   纯“DMA 适配/鲁棒性”模块：不做色彩空间转换，只负责把已经准备好的像素字节流
+//   做帧对齐/门控/打包/深 FIFO 缓冲，然后输出给 XDMA C2H 的 128-bit AXI4-Stream，
+//   并生成 user IRQ（VSYNC 上升沿/下降沿/帧完成）。
 //
-// 设计原则（面向低延时/高鲁棒性）：
+// 设计目标（低延时/高鲁棒性）：
 // - 不做帧缓存：按行/按帧的连续数据直接走 stream
-// - 在 XDMA 前放置深 FIFO，吸收 tready 抖动（避免 backpressure 直接影响视频输入）
-// - 帧对齐以 AXIS TUSER(SOF) 优先；fallback 用 VSYNC 边沿 + 首次握手锁定 SOF
-// - 发生 overflow/underflow 时丢弃当前帧并等待下一次 SOF 重对齐
+// - 在 XDMA 前放置深 FIFO，吸收 tready 抖动（避免 backpressure 直接影响上游）
+// - 帧对齐以 AXIS TUSER(SOF) 优先；fallback 用 VSYNC falling + 首次握手锁定 SOF
+// - overflow/underflow 时丢弃当前帧并等待下一次 SOF 重对齐
 //
-// 备注：
-// - 当前实现保持与原 top 逻辑一致：每个 24-bit 像素扩展为 32-bit（高 8bit 填 0），
-//   4 像素打包为 128-bit。
-// - 后续要支持 64-bit XDMA 或 YUV422，可在此模块内参数化/替换打包策略。
+// 输入格式约定（重要）：
+// - 本模块输入为 32-bit/word 的 AXI4-Stream：axis_pix
+// - word 的“内存字节序”（host 看到的 raw bytes）由上游保证与 pixelformat 匹配：
+//   - XBGR32（ffplay: bgr0）：每 word 的 bytes 为 [B,G,R,0]（little-endian）
+//   - YUYV422（ffplay: yuyv422）：每 word 的 bytes 为 [Y0,U0,Y1,V0]（little-endian）
+// - 本模块只做 4 words -> 128-bit 的拼接，保持字节流顺序，不解释像素含义。
+//
+// 注意：
+// - pack_word_last 仍保持“整帧最后一个 beat 才置位”的语义。
+// - 为了让行尾/帧尾能落在 128-bit beat 边界，上游每行输出的 32-bit word 数应能被 4 整除。
+//   例如：RGB32: 1920 words/line；YUYV: 960 words/line，均满足。
 //------------------------------------------------------------------------------
-
 `timescale 1ns / 1ps
 
 module video_cap_c2h_bridge #(
@@ -25,7 +32,7 @@ module video_cap_c2h_bridge #(
     // 说明：为了让 “Add Module to Block Design”（Module Reference）方式在 BD 中不报
     // “AXIS 接口未关联时钟/复位”等错误，这里显式声明时钟/复位与 AXIS bus 的关联关系。
     (* X_INTERFACE_INFO = "xilinx.com:signal:clock:1.0 axi_aclk CLK" *)
-    (* X_INTERFACE_PARAMETER = "ASSOCIATED_BUSIF axis_vid:s_axis_c2h, ASSOCIATED_RESET axi_aresetn" *)
+    (* X_INTERFACE_PARAMETER = "ASSOCIATED_BUSIF axis_pix:s_axis_c2h, ASSOCIATED_RESET axi_aresetn" *)
     input  wire         axi_aclk,
 
     (* X_INTERFACE_INFO = "xilinx.com:signal:reset:1.0 axi_aresetn RST" *)
@@ -36,17 +43,22 @@ module video_cap_c2h_bridge #(
     input  wire         ctrl_enable,
     input  wire         ctrl_soft_reset,
 
-    // 来自视频源的 VSYNC（异步输入到 axi_aclk 域，由本模块内部同步）
+    // 来自视频源的 VSYNC（可能异步输入到 axi_aclk 域，由本模块内部同步）
     input  wire         vid_vsync,
 
-    // v_vid_in_axi4s 输出（axi_aclk 域）
-    input  wire [23:0]  axis_vid_tdata,
-    input  wire         axis_vid_tvalid,
-    output wire         axis_vid_tready,
-    input  wire         axis_vid_tlast,
-    input  wire         axis_vid_tuser,
+    // 像素 AXI4-Stream 输入（axi_aclk 域，32-bit/word）
+    (* X_INTERFACE_INFO = "xilinx.com:interface:axis_rtl:1.0 axis_pix TDATA" *)
+    input  wire [31:0]  axis_pix_tdata,
+    (* X_INTERFACE_INFO = "xilinx.com:interface:axis_rtl:1.0 axis_pix TVALID" *)
+    input  wire         axis_pix_tvalid,
+    (* X_INTERFACE_INFO = "xilinx.com:interface:axis_rtl:1.0 axis_pix TREADY" *)
+    output wire         axis_pix_tready,
+    (* X_INTERFACE_INFO = "xilinx.com:interface:axis_rtl:1.0 axis_pix TLAST" *)
+    input  wire         axis_pix_tlast,
+    (* X_INTERFACE_INFO = "xilinx.com:interface:axis_rtl:1.0 axis_pix TUSER" *)
+    input  wire         axis_pix_tuser,
 
-    // v_vid_in_axi4s overflow/underflow（可能来自视频域；本模块内部同步到 axi_aclk）
+    // 上游 overflow/underflow（可能来自视频域；本模块内部同步到 axi_aclk）
     input  wire         vid_fifo_overflow,
     input  wire         vid_fifo_underflow,
 
@@ -100,7 +112,7 @@ module video_cap_c2h_bridge #(
     assign sts_fifo_overflow = vid_fifo_error_sticky;
 
     //--------------------------------------------------------------------------
-    // VSYNC 同步（axi_aclk 域）与 SOF fallback 逻辑
+    // VSYNC 同步（axi_aclk 域）
     //--------------------------------------------------------------------------
     (* ASYNC_REG = "TRUE" *) reg vsync_sync1, vsync_sync2, vsync_sync3;
     always @(posedge axi_aclk or negedge axi_aresetn) begin
@@ -114,12 +126,16 @@ module video_cap_c2h_bridge #(
             vsync_sync3 <= vsync_sync2;
         end
     end
+
     wire vsync_rising  =  vsync_sync2 && !vsync_sync3;
     wire vsync_falling = !vsync_sync2 &&  vsync_sync3;
 
-    // SOF 优先使用 axis_vid_tuser；fallback：VSYNC falling 之后的第一次握手视为 SOF
-    wire axis_vid_xfer_sof = axis_vid_tvalid && axis_vid_tready;
-    wire sof_axis_tuser    = axis_vid_xfer_sof && axis_vid_tuser;
+    //--------------------------------------------------------------------------
+    // 帧对齐/门控：保证每次传输从 SOF 开始
+    //--------------------------------------------------------------------------
+    // SOF 优先使用 axis_pix_tuser；fallback：VSYNC falling 之后的第一次握手视为 SOF
+    wire axis_pix_xfer_sof = axis_pix_tvalid && axis_pix_tready;
+    wire sof_axis_tuser    = axis_pix_xfer_sof && axis_pix_tuser;
 
     (* mark_debug="true" *) reg sof_wait_axis;
     always @(posedge axi_aclk or negedge axi_aresetn) begin
@@ -132,59 +148,59 @@ module video_cap_c2h_bridge #(
                 sof_wait_axis <= 1'b0;
             end else if (vsync_falling) begin
                 sof_wait_axis <= 1'b1;
-            end else if (sof_wait_axis && axis_vid_xfer_sof) begin
+            end else if (sof_wait_axis && axis_pix_xfer_sof) begin
                 sof_wait_axis <= 1'b0;
             end
         end
     end
 
-    wire sof_axis_vsync = sof_wait_axis && axis_vid_xfer_sof;
+    wire sof_axis_vsync = sof_wait_axis && axis_pix_xfer_sof;
     wire sof_detected   = sof_axis_tuser || sof_axis_vsync;
 
-    //--------------------------------------------------------------------------
-    // 帧对齐/门控状态机（与原 top 保持一致）
-    //--------------------------------------------------------------------------
-    wire sof_event;
-    wire axis_vid_xfer;
-    wire frame_start_pulse;
-    reg  sof_pending;
-    reg  capture_armed;
+    // 记录 SOF 事件（电平保持到开始真正拉流时清零）
+    (* mark_debug="true" *) reg sof_event;
+    always @(posedge axi_aclk or negedge axi_aresetn) begin
+        if (!axi_aresetn) begin
+            sof_event <= 1'b0;
+        end else if (~ctrl_enable || ctrl_soft_reset) begin
+            sof_event <= 1'b0;
+        end else if (sof_detected) begin
+            sof_event <= 1'b1;
+        end else if (sof_event && axis_pix_xfer_sof) begin
+            sof_event <= 1'b0;
+        end
+    end
+
+    // 只有在输出路径空闲 & XDMA ready 时才 arm，避免帧中途切入
+    (* mark_debug="true" *) reg  capture_armed;
+    (* mark_debug="true" *) reg  sof_pending;
+    (* mark_debug="true" *) reg  frame_in_progress;
+    (* mark_debug="true" *) reg  first_frame_seen;
+    (* mark_debug="true" *) reg  [10:0] line_cnt;
     wire out_path_idle;
 
-    assign sof_event         = sof_detected;
-    assign axis_vid_xfer     = axis_vid_tvalid && axis_vid_tready;
-    assign frame_start_pulse = axis_vid_xfer && capture_armed && (sof_pending || sof_event);
-
-    (* mark_debug="true" *) reg [10:0] line_cnt;
-    (* mark_debug="true" *) reg        frame_in_progress;
-    (* mark_debug="true" *) reg        first_frame_seen;
+    wire axis_pix_xfer = axis_pix_tvalid && axis_pix_tready;
+    wire frame_start_pulse = axis_pix_xfer && capture_armed && (sof_pending || sof_event);
 
     always @(posedge axi_aclk or negedge axi_aresetn) begin
         if (!axi_aresetn) begin
-            line_cnt          <= 11'd0;
+            capture_armed     <= 1'b0;
+            sof_pending       <= 1'b0;
             frame_in_progress <= 1'b0;
             first_frame_seen  <= 1'b0;
-            sof_pending       <= 1'b0;
-            capture_armed     <= 1'b0;
+            line_cnt          <= 11'd0;
         end else begin
-            if (~ctrl_enable || ctrl_soft_reset) begin
-                line_cnt          <= 11'd0;
-                frame_in_progress <= 1'b0;
-                sof_pending       <= 1'b0;
+            if (~ctrl_enable || ctrl_soft_reset || vid_fifo_overflow_axi || vid_fifo_underflow_axi) begin
                 capture_armed     <= 1'b0;
-            end else if (vid_fifo_overflow_axi || vid_fifo_underflow_axi) begin
-                // v_vid_in_axi4s 异常：丢帧并等待下一次 SOF
-                line_cnt          <= 11'd0;
-                frame_in_progress <= 1'b0;
                 sof_pending       <= 1'b0;
-                capture_armed     <= 1'b0;
+                frame_in_progress <= 1'b0;
+                first_frame_seen  <= 1'b0;
+                line_cnt          <= 11'd0;
             end else begin
-                // 主机开始拉数据（XDMA tready=1）且输出路径空闲时才允许 arm
                 if (!frame_in_progress && !sof_pending) begin
                     capture_armed <= s_axis_c2h_tready && out_path_idle;
                 end
 
-                // 记录 SOF 事件，直到看到第一次“真实握手”才启动帧
                 if (frame_start_pulse) begin
                     sof_pending <= 1'b0;
                 end else if (!frame_in_progress && capture_armed && sof_event) begin
@@ -196,7 +212,7 @@ module video_cap_c2h_bridge #(
                     first_frame_seen  <= 1'b1;
                     line_cnt          <= 11'd0;
                     capture_armed     <= 1'b0;
-                end else if (frame_in_progress && axis_vid_tvalid && axis_vid_tready && axis_vid_tlast) begin
+                end else if (frame_in_progress && axis_pix_tvalid && axis_pix_tready && axis_pix_tlast) begin
                     if (line_cnt >= (FRAME_LINES - 1)) begin
                         line_cnt          <= 11'd0;
                         frame_in_progress <= 1'b0;
@@ -210,7 +226,7 @@ module video_cap_c2h_bridge #(
 
     // 帧活跃：SOF 周期立即响应（组合逻辑）
     wire frame_active = frame_in_progress || frame_start_pulse;
-    wire frame_data_valid = axis_vid_tvalid && frame_active;
+    wire frame_data_valid = axis_pix_tvalid && frame_active;
 
     //--------------------------------------------------------------------------
     // 深 BRAM FIFO（在 XDMA 前提供弹性）
@@ -251,48 +267,46 @@ module video_cap_c2h_bridge #(
     assign out_path_idle = c2h_bram_fifo_empty;
 
     //--------------------------------------------------------------------------
-    // 24-bit 像素打包为 128-bit（保持原 top 行为）
+    // 32-bit words -> 128-bit（4 words/beat）
     //--------------------------------------------------------------------------
-    wire axis_pixel_xfer = frame_data_valid && axis_vid_tready;
-    reg  [1:0]  pixel_cnt;
-    reg  [23:0] pixel_buf [0:2];
+    wire axis_word_xfer = frame_data_valid && axis_pix_tready;
+    reg  [1:0]  word_cnt;
+    reg  [31:0] word_buf [0:2];
 
-    // 帧起点时把当前像素视为 pixel0，避免残留 pixel_cnt 造成相位错
-    wire [1:0] pixel_cnt_eff = frame_start_pulse ? 2'd0 : pixel_cnt;
-    wire pack_word_fire      = axis_pixel_xfer && (pixel_cnt_eff == 2'd3);
-    wire [127:0] pack_word_data = {8'h00, axis_vid_tdata,
-                                   8'h00, pixel_buf[2],
-                                   8'h00, pixel_buf[1],
-                                   8'h00, pixel_buf[0]};
-    wire pack_word_last = axis_vid_tlast && (line_cnt == (FRAME_LINES - 1));
+    wire [1:0] word_cnt_eff = frame_start_pulse ? 2'd0 : word_cnt;
+    wire pack_word_fire      = axis_word_xfer && (word_cnt_eff == 2'd3);
+
+    // pack：最新 word 放在最高 32bit，保证“低地址=更早数据”的顺序
+    wire [127:0] pack_word_data = {axis_pix_tdata, word_buf[2], word_buf[1], word_buf[0]};
+    wire pack_word_last = axis_pix_tlast && (line_cnt == (FRAME_LINES - 1));
 
     assign c2h_bram_fifo_din   = {pack_word_last, pack_word_data};
     assign c2h_bram_fifo_wr_en = pack_word_fire && c2h_bram_fifo_wr_ready;
 
     always @(posedge axi_aclk or negedge axi_aresetn) begin
         if (!axi_aresetn) begin
-            pixel_cnt    <= 2'd0;
-            pixel_buf[0] <= 24'd0;
-            pixel_buf[1] <= 24'd0;
-            pixel_buf[2] <= 24'd0;
+            word_cnt    <= 2'd0;
+            word_buf[0] <= 32'd0;
+            word_buf[1] <= 32'd0;
+            word_buf[2] <= 32'd0;
         end else begin
             if (~ctrl_enable || ctrl_soft_reset || vid_fifo_overflow_axi || vid_fifo_underflow_axi) begin
-                pixel_cnt    <= 2'd0;
-                pixel_buf[0] <= 24'd0;
-                pixel_buf[1] <= 24'd0;
-                pixel_buf[2] <= 24'd0;
-            end else if (axis_pixel_xfer) begin
+                word_cnt    <= 2'd0;
+                word_buf[0] <= 32'd0;
+                word_buf[1] <= 32'd0;
+                word_buf[2] <= 32'd0;
+            end else if (axis_word_xfer) begin
                 if (frame_start_pulse) begin
-                    pixel_buf[0] <= axis_vid_tdata;
-                    pixel_buf[1] <= 24'd0;
-                    pixel_buf[2] <= 24'd0;
-                    pixel_cnt    <= 2'd1;
+                    word_buf[0] <= axis_pix_tdata;
+                    word_buf[1] <= 32'd0;
+                    word_buf[2] <= 32'd0;
+                    word_cnt    <= 2'd1;
                 end else begin
-                    case (pixel_cnt)
-                        2'd0: begin pixel_buf[0] <= axis_vid_tdata; pixel_cnt <= 2'd1; end
-                        2'd1: begin pixel_buf[1] <= axis_vid_tdata; pixel_cnt <= 2'd2; end
-                        2'd2: begin pixel_buf[2] <= axis_vid_tdata; pixel_cnt <= 2'd3; end
-                        2'd3: begin pixel_cnt    <= 2'd0; end
+                    case (word_cnt)
+                        2'd0: begin word_buf[0] <= axis_pix_tdata; word_cnt <= 2'd1; end
+                        2'd1: begin word_buf[1] <= axis_pix_tdata; word_cnt <= 2'd2; end
+                        2'd2: begin word_buf[2] <= axis_pix_tdata; word_cnt <= 2'd3; end
+                        2'd3: begin word_cnt    <= 2'd0; end
                     endcase
                 end
             end
@@ -305,12 +319,12 @@ module video_cap_c2h_bridge #(
     assign s_axis_c2h_tlast  = c2h_bram_fifo_dout[128];
     assign s_axis_c2h_tvalid = ~c2h_bram_fifo_empty;
 
-    // tready：帧外强制 1（冲刷 v_vid_in_axi4s 内部 FIFO）；帧内仅在 word 边界受 FIFO 写入能力影响
-    wire axis_vid_tready_normal = (pixel_cnt != 2'd3) ? 1'b1 : c2h_bram_fifo_wr_ready;
-    assign axis_vid_tready = frame_in_progress ? axis_vid_tready_normal : 1'b1;
+    // tready：帧外强制 1（冲刷上游 FIFO）；帧内仅在 beat 边界受 FIFO 写入能力影响
+    wire axis_pix_tready_normal = (word_cnt != 2'd3) ? 1'b1 : c2h_bram_fifo_wr_ready;
+    assign axis_pix_tready = frame_in_progress ? axis_pix_tready_normal : 1'b1;
 
     //--------------------------------------------------------------------------
-    // user IRQ：保持与原 top 一致的映射
+    // user IRQ：保持与旧 top 一致的映射
     //--------------------------------------------------------------------------
     wire frame_complete = s_axis_c2h_tvalid && s_axis_c2h_tlast && s_axis_c2h_tready;
     reg  [3:0] irq_req_reg;
@@ -344,3 +358,4 @@ module video_cap_c2h_bridge #(
     assign usr_irq_req = irq_req_reg;
 
 endmodule
+
