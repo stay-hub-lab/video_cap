@@ -818,11 +818,11 @@ module video_cap_top_pcie (
     
     //==========================================================================
     // VSYNC Interrupt Generation
-    // 在 VSYNC 边沿产生中断，用于帧同步
-    // usr_irq_req[0]: VSYNC 上升沿（帧开始）
-    // usr_irq_req[1]: VSYNC 下降沿/DE 开始（有效数据开始）
-    // usr_irq_req[2]: 帧传输完成（line_cnt 达到 1079 且 TLAST）
-    // usr_irq_req[3]: 保留
+    // 目前仅使用 1 路 user IRQ 做“帧同步事件”（VSYNC 上升沿）。
+    // 说明：usr_irq_req 是 level 类型，必须等到 usr_irq_ack 才会清零；
+    // 如果硬件产生了多个 IRQ 但软件没有注册/ACK，会导致 IRQ 一直 pending。
+    //
+    // 注意：当前 Linux 驱动默认 `irq_index=1`，所以这里默认把 VSYNC 映射到 usr_irq_req[1]。
     //==========================================================================
     
     // 同步 VSYNC 到 AXI 时钟域
@@ -841,42 +841,27 @@ module video_cap_top_pcie (
     end
     
     // VSYNC 边沿检测
-    wire vsync_rising  = vsync_sync2 && !vsync_sync3;  // 上升沿
-    wire vsync_falling = !vsync_sync2 && vsync_sync3;  // 下降沿
-    
-    // 帧完成检测（在 TLAST 且 line_cnt=1079 时）
-    wire frame_complete = s_axis_c2h_tvalid_0 && s_axis_c2h_tlast_0 && s_axis_c2h_tready_0;
+    wire vsync_rising  = vsync_sync2 && !vsync_sync3;  // 上升沿（帧开始）
     
     // 中断请求寄存器（电平保持，直到 ACK）
     reg [3:0] irq_req_reg;
     
+    localparam integer VSYNC_IRQ_BIT = 1;
+
     always @(posedge axi_aclk or negedge axi_aresetn) begin
         if (!axi_aresetn) begin
             irq_req_reg <= 4'b0000;
         end else begin
-            // IRQ 0: VSYNC 上升沿（帧开始）
+            // VSYNC user IRQ（默认 bit1）
             if (vsync_rising) begin
-                irq_req_reg[0] <= 1'b1;
-            end else if (usr_irq_ack[0]) begin
-                irq_req_reg[0] <= 1'b0;
+                irq_req_reg[VSYNC_IRQ_BIT] <= 1'b1;
+            end else if (usr_irq_ack[VSYNC_IRQ_BIT]) begin
+                irq_req_reg[VSYNC_IRQ_BIT] <= 1'b0;
             end
-            
-            // IRQ 1: VSYNC 下降沿（有效数据即将开始）
-            if (vsync_falling) begin
-                irq_req_reg[1] <= 1'b1;
-            end else if (usr_irq_ack[1]) begin
-                irq_req_reg[1] <= 1'b0;
-            end
-            
-            // IRQ 2: 帧传输完成
-            if (frame_complete) begin
-                irq_req_reg[2] <= 1'b1;
-            end else if (usr_irq_ack[2]) begin
-                irq_req_reg[2] <= 1'b0;
-            end
-            
-            // IRQ 3: 保留
-            irq_req_reg[3] <= 1'b0;
+
+            // 其余 IRQ 暂不使用（保持 0，避免无 ACK 时 pending）
+            irq_req_reg[0]   <= 1'b0;
+            irq_req_reg[3:2] <= 2'b00;
         end
     end
     
@@ -907,6 +892,8 @@ module video_cap_top_pcie (
     );
 
     video_cap_c2h_bridge #(
+        .USER_IRQ_WIDTH            (4),
+        .VSYNC_IRQ_BIT             (1),
         .FRAME_LINES               (1080),
         .C2H_BRAM_FIFO_DEPTH_WORDS (4096)   // 4096 * 16B = 64KB
     ) u_video_cap_c2h_bridge (

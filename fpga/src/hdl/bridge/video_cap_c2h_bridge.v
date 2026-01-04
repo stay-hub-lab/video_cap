@@ -26,6 +26,8 @@
 `timescale 1ns / 1ps
 
 module video_cap_c2h_bridge #(
+    parameter integer USER_IRQ_WIDTH = 4,
+    parameter integer VSYNC_IRQ_BIT  = 1,
     parameter integer FRAME_LINES = 1080,
     parameter integer C2H_BRAM_FIFO_DEPTH_WORDS = 4096  // 4096 * 16B = 64KB
 ) (
@@ -70,8 +72,9 @@ module video_cap_c2h_bridge #(
     input  wire         s_axis_c2h_tready,
 
     // user IRQ（电平保持直到 ack）
-    output wire [3:0]   usr_irq_req,
-    input  wire [3:0]   usr_irq_ack,
+    // user IRQ（电平保持直到 ack）
+    output wire [USER_IRQ_WIDTH-1:0]   usr_irq_req,
+    input  wire [USER_IRQ_WIDTH-1:0]   usr_irq_ack,
 
     // 状态：sticky 的 overflow/underflow（用于寄存器 STATUS）
     output wire         sts_fifo_overflow
@@ -323,39 +326,32 @@ module video_cap_c2h_bridge #(
     wire axis_pix_tready_normal = (word_cnt != 2'd3) ? 1'b1 : c2h_bram_fifo_wr_ready;
     assign axis_pix_tready = frame_in_progress ? axis_pix_tready_normal : 1'b1;
 
-    //--------------------------------------------------------------------------
-    // user IRQ：保持与旧 top 一致的映射
-    //--------------------------------------------------------------------------
-    wire frame_complete = s_axis_c2h_tvalid && s_axis_c2h_tlast && s_axis_c2h_tready;
-    reg  [3:0] irq_req_reg;
+      //--------------------------------------------------------------------------
+      // user IRQ（level）：本实例只使用 1 个 user IRQ bit（VSYNC 上升沿）
+      // - 使用位：VSYNC_IRQ_BIT（建议让它与 Linux 驱动的 irq_index + channel 对齐）
+      // - 其它位：保持为 0，避免未注册/未 ACK 时一直 pending
+      //--------------------------------------------------------------------------
+    wire [USER_IRQ_WIDTH-1:0] vsync_mask = ({ {(USER_IRQ_WIDTH-1){1'b0}}, 1'b1 } << VSYNC_IRQ_BIT);
+    reg  [USER_IRQ_WIDTH-1:0] irq_req_reg;
 
     always @(posedge axi_aclk or negedge axi_aresetn) begin
         if (!axi_aresetn) begin
-            irq_req_reg <= 4'b0000;
+            irq_req_reg <= {USER_IRQ_WIDTH{1'b0}};
+        end else if (~ctrl_enable || ctrl_soft_reset) begin
+            irq_req_reg <= {USER_IRQ_WIDTH{1'b0}};
         end else begin
+            // only keep VSYNC bit, force other bits low (avoid pending IRQs without ACK)
+            irq_req_reg <= irq_req_reg & vsync_mask;
+
             if (vsync_rising) begin
-                irq_req_reg[0] <= 1'b1;
-            end else if (usr_irq_ack[0]) begin
-                irq_req_reg[0] <= 1'b0;
+                irq_req_reg[VSYNC_IRQ_BIT] <= 1'b1;
+            end else if (usr_irq_ack[VSYNC_IRQ_BIT]) begin
+                irq_req_reg[VSYNC_IRQ_BIT] <= 1'b0;
             end
-
-            if (vsync_falling) begin
-                irq_req_reg[1] <= 1'b1;
-            end else if (usr_irq_ack[1]) begin
-                irq_req_reg[1] <= 1'b0;
-            end
-
-            if (frame_complete) begin
-                irq_req_reg[2] <= 1'b1;
-            end else if (usr_irq_ack[2]) begin
-                irq_req_reg[2] <= 1'b0;
-            end
-
-            irq_req_reg[3] <= 1'b0;
         end
     end
 
     assign usr_irq_req = irq_req_reg;
 
-endmodule
 
+endmodule

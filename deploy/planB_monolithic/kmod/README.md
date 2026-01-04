@@ -36,22 +36,28 @@ v4l2-ctl -d /dev/video0 --all
 ffplay -f v4l2 -video_size 1920x1080 -input_format bgr0 -i /dev/video0
 ```
 
-切换到 YUYV（YUV422）：
+YUYV（YUV422）：
 
 ```bash
-v4l2-ctl -d /dev/video0 --set-fmt-video=width=1920,height=1080,pixelformat=YUYV
-ffplay -f v4l2 -video_size 1920x1080 -input_format yuyv422 -i /dev/video0
+v4l2-ctl -d /dev/video1 --set-fmt-video=width=1920,height=1080,pixelformat=YUYV
+ffplay -f v4l2 -video_size 1920x1080 -input_format yuyv422 -i /dev/video1
 ```
 
 ## 参数说明
 
 ### insmod 参数（module_param）
 
-- `c2h_channel`：C2H 通道号（默认 0）
-- `irq_index`：用作 VSYNC 的 XDMA user IRQ 编号（默认 1）
+- `c2h_channel`：第一个 C2H 通道号（base，默认 0）
+- `irq_index`：第一个用作 VSYNC 的 XDMA user IRQ 编号（base，默认 1）
+- `num_channels`：暴露多少路 `/dev/videoX`（0=自动按 XDMA 枚举到的 `c2h_channel_max`）
 - `test_pattern`：是否让 FPGA 输出测试图（默认 1）
 - `skip`：STREAMON 后丢弃 N 帧（warm-up，默认 0）
 - `vsync_timeout_ms`：等待 VSYNC 的超时时间（ms，默认 1000）
+
+说明：
+- 多通道时，每路 video 会使用 `c2h_channel + i` 和 `irq_index + i`（i 从 0 开始）。
+- 你的 FPGA 如果只接了 4 路 user IRQ，那么 `num_channels` 最多也就建议 4（否则多出来的通道会一直等不到 VSYNC）。
+- 如果指定 `num_channels` 大于 XDMA 实际枚举到的 C2H 通道数（例如 `c2h_max=1`），驱动会打印 `clamp num_channels=...` 并按可用通道数降级创建 `/dev/videoX`。要真正生成 2 路 video，需要 XDMA 实际枚举到 ≥2 路 C2H（例如能看到 `xdma0_c2h_0/xdma0_c2h_1`），并把两路视频流分别接到对应的 C2H 端口。
 
 说明：`test_pattern/skip/vsync_timeout_ms` 也可以在加载后用 V4L2 controls 设置（见下文）。
 

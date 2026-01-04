@@ -28,7 +28,11 @@
       "color_bar_yuv422_0": "",
       "v_vid_in_axi4s_1": "",
       "axis_rgb888_to_xbgr32_0": "",
-      "axis_dwidth_converter_0": ""
+      "axis_dwidth_converter_0": "",
+      "video_cap_c2h_bridge_1": "",
+      "xlconcat_1": "",
+      "xlslice_0": "",
+      "xlslice_1": ""
     },
     "interface_ports": {
       "sys": {
@@ -112,7 +116,7 @@
         "direction": "I",
         "parameters": {
           "CLK_DOMAIN": {
-            "value": "video_to_pcie_clk_in1_0",
+            "value": "video_to_pcie_sys_clk_200m",
             "value_src": "default"
           },
           "FREQ_HZ": {
@@ -140,6 +144,11 @@
         "xci_name": "video_to_pcie_video_cap_c2h_bridge_0_0",
         "xci_path": "ip\\video_to_pcie_video_cap_c2h_bridge_0_0\\video_to_pcie_video_cap_c2h_bridge_0_0.xci",
         "inst_hier_path": "video_cap_c2h_bridge_0",
+        "parameters": {
+          "USER_IRQ_WIDTH": {
+            "value": "4"
+          }
+        },
         "reference_info": {
           "ref_type": "hdl",
           "ref_name": "video_cap_c2h_bridge",
@@ -635,7 +644,7 @@
               }
             }
           },
-          "ctrl_enable": {
+          "ctrl0_enable": {
             "direction": "O",
             "parameters": {
               "PortType": {
@@ -648,16 +657,51 @@
               }
             }
           },
-          "ctrl_soft_reset": {
+          "ctrl0_soft_reset": {
             "type": "rst",
             "direction": "O"
           },
-          "ctrl_test_mode": {
+          "ctrl0_test_mode": {
             "direction": "O"
           },
-          "ctrl_vid_format": {
+          "ctrl0_vid_format": {
             "direction": "O",
             "left": "7",
+            "right": "0"
+          },
+          "ctrl1_enable": {
+            "direction": "O"
+          },
+          "ctrl1_soft_reset": {
+            "type": "rst",
+            "direction": "O"
+          },
+          "ctrl1_test_mode": {
+            "direction": "O"
+          },
+          "ctrl1_vid_format": {
+            "direction": "O",
+            "left": "7",
+            "right": "0"
+          },
+          "ctrl_enable_ch": {
+            "direction": "O",
+            "left": "1",
+            "right": "0"
+          },
+          "ctrl_test_mode_ch": {
+            "direction": "O",
+            "left": "1",
+            "right": "0"
+          },
+          "ctrl_soft_reset_ch": {
+            "direction": "O",
+            "left": "1",
+            "right": "0"
+          },
+          "ctrl_vid_format_ch": {
+            "direction": "O",
+            "left": "15",
             "right": "0"
           },
           "sts_idle": {
@@ -723,6 +767,12 @@
           },
           "xdma_num_usr_irq": {
             "value": "4"
+          },
+          "xdma_rnum_chnl": {
+            "value": "2"
+          },
+          "xdma_wnum_chnl": {
+            "value": "2"
           }
         },
         "interface_ports": {
@@ -1288,6 +1338,271 @@
             ]
           }
         }
+      },
+      "video_cap_c2h_bridge_1": {
+        "vlnv": "xilinx.com:module_ref:video_cap_c2h_bridge:1.0",
+        "ip_revision": "1",
+        "xci_name": "video_to_pcie_video_cap_c2h_bridge_0_1",
+        "xci_path": "ip\\video_to_pcie_video_cap_c2h_bridge_0_1\\video_to_pcie_video_cap_c2h_bridge_0_1.xci",
+        "inst_hier_path": "video_cap_c2h_bridge_1",
+        "parameters": {
+          "USER_IRQ_WIDTH": {
+            "value": "4"
+          },
+          "VSYNC_IRQ_BIT": {
+            "value": "2"
+          }
+        },
+        "reference_info": {
+          "ref_type": "hdl",
+          "ref_name": "video_cap_c2h_bridge",
+          "boundary_crc": "0x0"
+        },
+        "interface_ports": {
+          "axis_pix": {
+            "mode": "Slave",
+            "vlnv_bus_definition": "xilinx.com:interface:axis:1.0",
+            "vlnv": "xilinx.com:interface:axis_rtl:1.0",
+            "parameters": {
+              "TDATA_NUM_BYTES": {
+                "value": "4",
+                "value_src": "constant"
+              },
+              "TDEST_WIDTH": {
+                "value": "0",
+                "value_src": "constant"
+              },
+              "TID_WIDTH": {
+                "value": "0",
+                "value_src": "constant"
+              },
+              "TUSER_WIDTH": {
+                "value": "1",
+                "value_src": "constant"
+              },
+              "HAS_TREADY": {
+                "value": "1",
+                "value_src": "constant"
+              },
+              "HAS_TSTRB": {
+                "value": "0",
+                "value_src": "constant"
+              },
+              "HAS_TKEEP": {
+                "value": "0",
+                "value_src": "constant"
+              },
+              "HAS_TLAST": {
+                "value": "1",
+                "value_src": "constant"
+              },
+              "CLK_DOMAIN": {
+                "value": "video_to_pcie_xdma_0_0_axi_aclk",
+                "value_src": "default_prop"
+              }
+            },
+            "port_maps": {
+              "TDATA": {
+                "physical_name": "axis_pix_tdata",
+                "direction": "I",
+                "left": "31",
+                "right": "0"
+              },
+              "TLAST": {
+                "physical_name": "axis_pix_tlast",
+                "direction": "I"
+              },
+              "TUSER": {
+                "physical_name": "axis_pix_tuser",
+                "direction": "I"
+              },
+              "TVALID": {
+                "physical_name": "axis_pix_tvalid",
+                "direction": "I"
+              },
+              "TREADY": {
+                "physical_name": "axis_pix_tready",
+                "direction": "O"
+              }
+            }
+          },
+          "s_axis_c2h": {
+            "mode": "Master",
+            "vlnv_bus_definition": "xilinx.com:interface:axis:1.0",
+            "vlnv": "xilinx.com:interface:axis_rtl:1.0",
+            "parameters": {
+              "TDATA_NUM_BYTES": {
+                "value": "16",
+                "value_src": "constant"
+              },
+              "TDEST_WIDTH": {
+                "value": "0",
+                "value_src": "constant"
+              },
+              "TID_WIDTH": {
+                "value": "0",
+                "value_src": "constant"
+              },
+              "TUSER_WIDTH": {
+                "value": "0",
+                "value_src": "constant"
+              },
+              "HAS_TREADY": {
+                "value": "1",
+                "value_src": "constant"
+              },
+              "HAS_TSTRB": {
+                "value": "0",
+                "value_src": "constant"
+              },
+              "HAS_TKEEP": {
+                "value": "1",
+                "value_src": "constant"
+              },
+              "HAS_TLAST": {
+                "value": "1",
+                "value_src": "constant"
+              },
+              "CLK_DOMAIN": {
+                "value": "video_to_pcie_xdma_0_0_axi_aclk",
+                "value_src": "default_prop"
+              }
+            },
+            "port_maps": {
+              "TDATA": {
+                "physical_name": "s_axis_c2h_tdata",
+                "direction": "O",
+                "left": "127",
+                "right": "0"
+              },
+              "TKEEP": {
+                "physical_name": "s_axis_c2h_tkeep",
+                "direction": "O",
+                "left": "15",
+                "right": "0"
+              },
+              "TLAST": {
+                "physical_name": "s_axis_c2h_tlast",
+                "direction": "O"
+              },
+              "TVALID": {
+                "physical_name": "s_axis_c2h_tvalid",
+                "direction": "O"
+              },
+              "TREADY": {
+                "physical_name": "s_axis_c2h_tready",
+                "direction": "I"
+              }
+            }
+          }
+        },
+        "ports": {
+          "axi_aclk": {
+            "type": "clk",
+            "direction": "I",
+            "parameters": {
+              "ASSOCIATED_RESET": {
+                "value": "axi_aresetn",
+                "value_src": "constant"
+              },
+              "ASSOCIATED_BUSIF": {
+                "value": "axis_pix:s_axis_c2h",
+                "value_src": "constant"
+              },
+              "CLK_DOMAIN": {
+                "value": "video_to_pcie_xdma_0_0_axi_aclk",
+                "value_src": "default_prop"
+              }
+            }
+          },
+          "axi_aresetn": {
+            "type": "rst",
+            "direction": "I",
+            "parameters": {
+              "POLARITY": {
+                "value": "ACTIVE_LOW",
+                "value_src": "constant"
+              }
+            }
+          },
+          "ctrl_enable": {
+            "direction": "I"
+          },
+          "ctrl_soft_reset": {
+            "type": "rst",
+            "direction": "I"
+          },
+          "vid_vsync": {
+            "direction": "I"
+          },
+          "vid_fifo_overflow": {
+            "direction": "I"
+          },
+          "vid_fifo_underflow": {
+            "direction": "I"
+          },
+          "usr_irq_req": {
+            "direction": "O",
+            "left": "3",
+            "right": "0"
+          },
+          "usr_irq_ack": {
+            "direction": "I",
+            "left": "3",
+            "right": "0"
+          },
+          "sts_fifo_overflow": {
+            "direction": "O"
+          }
+        }
+      },
+      "xlconcat_1": {
+        "vlnv": "xilinx.com:ip:xlconcat:2.1",
+        "ip_revision": "6",
+        "xci_name": "video_to_pcie_xlconcat_1_0",
+        "xci_path": "ip\\video_to_pcie_xlconcat_1_0\\video_to_pcie_xlconcat_1_0.xci",
+        "inst_hier_path": "xlconcat_1",
+        "parameters": {
+          "NUM_PORTS": {
+            "value": "4"
+          }
+        }
+      },
+      "xlslice_0": {
+        "vlnv": "xilinx.com:ip:xlslice:1.0",
+        "ip_revision": "4",
+        "xci_name": "video_to_pcie_xlslice_0_0",
+        "xci_path": "ip\\video_to_pcie_xlslice_0_0\\video_to_pcie_xlslice_0_0.xci",
+        "inst_hier_path": "xlslice_0",
+        "parameters": {
+          "DIN_FROM": {
+            "value": "1"
+          },
+          "DIN_TO": {
+            "value": "1"
+          },
+          "DIN_WIDTH": {
+            "value": "4"
+          }
+        }
+      },
+      "xlslice_1": {
+        "vlnv": "xilinx.com:ip:xlslice:1.0",
+        "ip_revision": "4",
+        "xci_name": "video_to_pcie_xlslice_0_1",
+        "xci_path": "ip\\video_to_pcie_xlslice_0_1\\video_to_pcie_xlslice_0_1.xci",
+        "inst_hier_path": "xlslice_1",
+        "parameters": {
+          "DIN_FROM": {
+            "value": "2"
+          },
+          "DIN_TO": {
+            "value": "2"
+          },
+          "DIN_WIDTH": {
+            "value": "4"
+          }
+        }
       }
     },
     "interface_nets": {
@@ -1311,8 +1626,14 @@
       },
       "axis_dwidth_converter_0_M_AXIS": {
         "interface_ports": [
-          "axis_dwidth_converter_0/M_AXIS",
-          "video_cap_c2h_bridge_0/axis_pix"
+          "video_cap_c2h_bridge_1/axis_pix",
+          "axis_dwidth_converter_0/M_AXIS"
+        ]
+      },
+      "axis_rgb888_to_xbgr32_0_m_axis": {
+        "interface_ports": [
+          "video_cap_c2h_bridge_0/axis_pix",
+          "axis_rgb888_to_xbgr32_0/m_axis"
         ]
       },
       "v_vid_in_axi4s_0_video_out": {
@@ -1331,6 +1652,12 @@
         "interface_ports": [
           "xdma_0/S_AXIS_C2H_0",
           "video_cap_c2h_bridge_0/s_axis_c2h"
+        ]
+      },
+      "video_cap_c2h_bridge_1_s_axis_c2h": {
+        "interface_ports": [
+          "video_cap_c2h_bridge_1/s_axis_c2h",
+          "xdma_0/S_AXIS_C2H_1"
         ]
       },
       "xdma_0_pcie_mgt": {
@@ -1396,7 +1723,8 @@
       "color_bar_0_vs": {
         "ports": [
           "color_bar_0/vs",
-          "v_vid_in_axi4s_0/vid_vsync"
+          "v_vid_in_axi4s_0/vid_vsync",
+          "video_cap_c2h_bridge_0/vid_vsync"
         ]
       },
       "color_bar_yuv422_0_data": {
@@ -1421,7 +1749,7 @@
         "ports": [
           "color_bar_yuv422_0/vs",
           "v_vid_in_axi4s_1/vid_vsync",
-          "video_cap_c2h_bridge_0/vid_vsync"
+          "video_cap_c2h_bridge_1/vid_vsync"
         ]
       },
       "proc_sys_reset_1_peripheral_reset": {
@@ -1431,22 +1759,29 @@
           "color_bar_yuv422_0/rst"
         ]
       },
+      "register_bank_0_ctrl1_enable": {
+        "ports": [
+          "register_bank_0/ctrl1_enable",
+          "video_cap_c2h_bridge_1/ctrl_enable"
+        ]
+      },
+      "register_bank_0_ctrl1_soft_reset": {
+        "ports": [
+          "register_bank_0/ctrl1_soft_reset",
+          "video_cap_c2h_bridge_1/ctrl_soft_reset"
+        ]
+      },
       "register_bank_0_ctrl_enable": {
         "ports": [
-          "register_bank_0/ctrl_enable",
+          "register_bank_0/ctrl0_enable",
           "util_vector_logic_0/Op1",
           "video_cap_c2h_bridge_0/ctrl_enable"
         ]
       },
       "register_bank_0_ctrl_soft_reset": {
         "ports": [
-          "register_bank_0/ctrl_soft_reset",
+          "register_bank_0/ctrl0_soft_reset",
           "video_cap_c2h_bridge_0/ctrl_soft_reset"
-        ]
-      },
-      "register_bank_0_ctrl_vid_format": {
-        "ports": [
-          "register_bank_0/ctrl_vid_format"
         ]
       },
       "sys_rst_n_0_1": {
@@ -1467,16 +1802,28 @@
           "register_bank_0/sts_idle"
         ]
       },
+      "v_vid_in_axi4s_0_overflow": {
+        "ports": [
+          "v_vid_in_axi4s_0/overflow",
+          "video_cap_c2h_bridge_0/vid_fifo_overflow"
+        ]
+      },
+      "v_vid_in_axi4s_0_underflow": {
+        "ports": [
+          "v_vid_in_axi4s_0/underflow",
+          "video_cap_c2h_bridge_0/vid_fifo_underflow"
+        ]
+      },
       "v_vid_in_axi4s_1_overflow": {
         "ports": [
           "v_vid_in_axi4s_1/overflow",
-          "video_cap_c2h_bridge_0/vid_fifo_overflow"
+          "video_cap_c2h_bridge_1/vid_fifo_overflow"
         ]
       },
       "v_vid_in_axi4s_1_underflow": {
         "ports": [
           "v_vid_in_axi4s_1/underflow",
-          "video_cap_c2h_bridge_0/vid_fifo_underflow"
+          "video_cap_c2h_bridge_1/vid_fifo_underflow"
         ]
       },
       "video_cap_c2h_bridge_0_sts_fifo_overflow": {
@@ -1488,7 +1835,13 @@
       "video_cap_c2h_bridge_0_usr_irq_req": {
         "ports": [
           "video_cap_c2h_bridge_0/usr_irq_req",
-          "xdma_0/usr_irq_req"
+          "xlslice_0/Din"
+        ]
+      },
+      "video_cap_c2h_bridge_1_usr_irq_req": {
+        "ports": [
+          "video_cap_c2h_bridge_1/usr_irq_req",
+          "xlslice_1/Din"
         ]
       },
       "xdma_0_axi_aclk": {
@@ -1498,11 +1851,12 @@
           "axi_interconnect_0/ACLK",
           "axi_interconnect_0/S00_ACLK",
           "axi_interconnect_0/M00_ACLK",
-          "register_bank_0/aclk",
           "v_vid_in_axi4s_1/aclk",
           "axis_rgb888_to_xbgr32_0/aclk",
           "axis_dwidth_converter_0/aclk",
-          "video_cap_c2h_bridge_0/axi_aclk"
+          "register_bank_0/aclk",
+          "video_cap_c2h_bridge_0/axi_aclk",
+          "video_cap_c2h_bridge_1/axi_aclk"
         ]
       },
       "xdma_0_axi_aresetn": {
@@ -1512,11 +1866,12 @@
           "axi_interconnect_0/M00_ARESETN",
           "axi_interconnect_0/S00_ARESETN",
           "v_vid_in_axi4s_0/aresetn",
-          "register_bank_0/aresetn",
           "v_vid_in_axi4s_1/aresetn",
           "axis_rgb888_to_xbgr32_0/aresetn",
           "axis_dwidth_converter_0/aresetn",
-          "video_cap_c2h_bridge_0/axi_aresetn"
+          "register_bank_0/aresetn",
+          "video_cap_c2h_bridge_0/axi_aresetn",
+          "video_cap_c2h_bridge_1/axi_aresetn"
         ]
       },
       "xdma_0_user_lnk_up": {
@@ -1528,6 +1883,7 @@
       "xdma_0_usr_irq_ack": {
         "ports": [
           "xdma_0/usr_irq_ack",
+          "video_cap_c2h_bridge_1/usr_irq_ack",
           "video_cap_c2h_bridge_0/usr_irq_ack"
         ]
       },
@@ -1537,10 +1893,28 @@
           "v_vid_in_axi4s_0/vid_data"
         ]
       },
+      "xlconcat_1_dout": {
+        "ports": [
+          "xlconcat_1/dout",
+          "xdma_0/usr_irq_req"
+        ]
+      },
       "xlconstant_0_dout": {
         "ports": [
           "vcc/dout",
           "register_bank_0/sts_mig_calib"
+        ]
+      },
+      "xlslice_0_Dout": {
+        "ports": [
+          "xlslice_0/Dout",
+          "xlconcat_1/In1"
+        ]
+      },
+      "xlslice_1_Dout": {
+        "ports": [
+          "xlslice_1/Dout",
+          "xlconcat_1/In2"
         ]
       }
     },

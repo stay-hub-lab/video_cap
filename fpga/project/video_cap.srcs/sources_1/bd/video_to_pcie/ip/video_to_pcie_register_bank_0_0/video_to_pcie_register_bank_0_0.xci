@@ -8,7 +8,13 @@
     "gen_directory": "../../../../../../video_cap.gen/sources_1/bd/video_to_pcie/ip/video_to_pcie_register_bank_0_0",
     "parameters": {
       "component_parameters": {
+        "CH_COUNT": [ { "value": "2", "resolve_type": "user", "format": "long", "usage": "all" } ],
+        "CH_STRIDE": [ { "value": "0x0100", "resolve_type": "user", "format": "bitString", "usage": "all" } ],
         "Component_Name": [ { "value": "video_to_pcie_register_bank_0_0", "resolve_type": "user", "usage": "all" } ]
+      },
+      "model_parameters": {
+        "CH_COUNT": [ { "value": "2", "resolve_type": "generated", "format": "long", "usage": "all" } ],
+        "CH_STRIDE": [ { "value": "0x0100", "resolve_type": "generated", "format": "bitString", "usage": "all" } ]
       },
       "project_parameters": {
         "ARCHITECTURE": [ { "value": "kintex7" } ],
@@ -55,10 +61,18 @@
         "s_axil_rresp": [ { "direction": "out", "size_left": "1", "size_right": "0" } ],
         "s_axil_rvalid": [ { "direction": "out" } ],
         "s_axil_rready": [ { "direction": "in", "driver_value": "0" } ],
-        "ctrl_enable": [ { "direction": "out" } ],
-        "ctrl_soft_reset": [ { "direction": "out" } ],
-        "ctrl_test_mode": [ { "direction": "out" } ],
-        "ctrl_vid_format": [ { "direction": "out", "size_left": "7", "size_right": "0" } ],
+        "ctrl0_enable": [ { "direction": "out" } ],
+        "ctrl0_soft_reset": [ { "direction": "out" } ],
+        "ctrl0_test_mode": [ { "direction": "out" } ],
+        "ctrl0_vid_format": [ { "direction": "out", "size_left": "7", "size_right": "0" } ],
+        "ctrl1_enable": [ { "direction": "out" } ],
+        "ctrl1_soft_reset": [ { "direction": "out" } ],
+        "ctrl1_test_mode": [ { "direction": "out" } ],
+        "ctrl1_vid_format": [ { "direction": "out", "size_left": "7", "size_right": "0" } ],
+        "ctrl_enable_ch": [ { "direction": "out", "size_left": "1", "size_right": "0" } ],
+        "ctrl_test_mode_ch": [ { "direction": "out", "size_left": "1", "size_right": "0" } ],
+        "ctrl_soft_reset_ch": [ { "direction": "out", "size_left": "1", "size_right": "0" } ],
+        "ctrl_vid_format_ch": [ { "direction": "out", "size_left": "15", "size_right": "0" } ],
         "sts_idle": [ { "direction": "in" } ],
         "sts_mig_calib": [ { "direction": "in" } ],
         "sts_fifo_overflow": [ { "direction": "in" } ],
@@ -137,7 +151,7 @@
             "RST": [ { "physical_name": "aresetn" } ]
           }
         },
-        "ctrl_soft_reset": {
+        "ctrl0_soft_reset": {
           "vlnv": "xilinx.com:signal:reset:1.0",
           "abstraction_type": "xilinx.com:signal:reset_rtl:1.0",
           "mode": "master",
@@ -146,7 +160,19 @@
             "INSERT_VIP": [ { "value": "0", "resolve_type": "user", "format": "long", "usage": "simulation.rtl", "is_ips_inferred": true, "is_static_object": false } ]
           },
           "port_maps": {
-            "RST": [ { "physical_name": "ctrl_soft_reset" } ]
+            "RST": [ { "physical_name": "ctrl0_soft_reset" } ]
+          }
+        },
+        "ctrl1_soft_reset": {
+          "vlnv": "xilinx.com:signal:reset:1.0",
+          "abstraction_type": "xilinx.com:signal:reset_rtl:1.0",
+          "mode": "master",
+          "parameters": {
+            "POLARITY": [ { "value": "ACTIVE_LOW", "value_permission": "bd_and_user", "resolve_type": "generated", "is_ips_inferred": true, "is_static_object": false } ],
+            "INSERT_VIP": [ { "value": "0", "resolve_type": "user", "format": "long", "usage": "simulation.rtl", "is_ips_inferred": true, "is_static_object": false } ]
+          },
+          "port_maps": {
+            "RST": [ { "physical_name": "ctrl1_soft_reset" } ]
           }
         },
         "aclk": {

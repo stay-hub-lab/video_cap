@@ -27,6 +27,7 @@
 #define REG_STATUS 0x0008     /* RO: 状态寄存器 (ADDR_STATUS) */
 #define REG_IRQ_MASK 0x000C   /* RW: 中断屏蔽 (ADDR_IRQ_MASK) */
 #define REG_IRQ_STATUS 0x0010 /* RW1C: 中断状态 (ADDR_IRQ_STATUS) */
+#define REG_CAPS 0x0014       /* RO: 能力/参数描述（多通道扩展） */
 
 /* 视频配置 */
 #define REG_VID_FORMAT 0x0100     /* RW: 视频格式 (ADDR_VID_FMT) */
@@ -79,6 +80,35 @@
 #define IRQ_DMA_ERROR (1 << 1)  /* DMA错误 */
 #define IRQ_OVERFLOW (1 << 2)   /* 缓冲区溢出 */
 #define IRQ_UNDERFLOW (1 << 3)  /* 缓冲区欠流 */
+
+/*
+ * REG_CAPS 位定义（建议）
+ * - 为了支持多 C2H 通道并发采集，推荐加入 per-channel 控制/格式寄存器。
+ *
+ * [0]   CAPS_FEAT_PER_CH_CTRL  : 每个 channel 有独立 CTRL_ENABLE/TEST_MODE/SOFT_RESET
+ * [1]   CAPS_FEAT_PER_CH_FMT   : 每个 channel 有独立 VID_FORMAT
+ * [2]   CAPS_FEAT_PER_CH_STS   : 每个 channel 有独立 STATUS/overflow/underflow
+ * [7:4] reserved
+ * [15:8] CAPS_CH_COUNT         : 支持的 channel 数（>=1）
+ * [31:16] CAPS_CH_STRIDE       : per-channel 寄存器 block stride（bytes，>=0x20）
+ */
+#define CAPS_FEAT_PER_CH_CTRL (1u << 0)
+#define CAPS_FEAT_PER_CH_FMT  (1u << 1)
+#define CAPS_FEAT_PER_CH_STS  (1u << 2)
+#define CAPS_CH_COUNT_MASK    0x0000FF00u
+#define CAPS_CH_COUNT_SHIFT   8
+#define CAPS_CH_STRIDE_MASK   0xFFFF0000u
+#define CAPS_CH_STRIDE_SHIFT  16
+
+/*
+ * 建议的 per-channel 寄存器布局（后续 FPGA register_bank 改造用）
+ * - 保持现有单通道寄存器后向兼容（REG_CONTROL/REG_VID_FORMAT 等）
+ * - 新增 per-channel block：REG_CH_BASE + ch * stride + OFF_*
+ */
+#define REG_CH_BASE 0x1000u
+#define REG_CH_OFF_CONTROL    0x00u
+#define REG_CH_OFF_VID_FORMAT 0x04u
+#define REG_CH_OFF_STATUS     0x08u
 
 /*
  * REG_VID_CONTROL 位定义

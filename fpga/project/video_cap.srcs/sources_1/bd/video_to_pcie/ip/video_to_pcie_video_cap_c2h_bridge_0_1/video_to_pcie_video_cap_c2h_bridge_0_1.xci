@@ -1,22 +1,22 @@
 {
   "schema": "xilinx.com:schema:json_instance:1.0",
   "ip_inst": {
-    "xci_name": "video_to_pcie_video_cap_c2h_bridge_0_0",
-    "cell_name": "video_cap_c2h_bridge_0",
+    "xci_name": "video_to_pcie_video_cap_c2h_bridge_0_1",
+    "cell_name": "video_cap_c2h_bridge_1",
     "component_reference": "xilinx.com:module_ref:video_cap_c2h_bridge:1.0",
     "ip_revision": "1",
-    "gen_directory": "../../../../../../video_cap.gen/sources_1/bd/video_to_pcie/ip/video_to_pcie_video_cap_c2h_bridge_0_0",
+    "gen_directory": "../../../../../../video_cap.gen/sources_1/bd/video_to_pcie/ip/video_to_pcie_video_cap_c2h_bridge_0_1",
     "parameters": {
       "component_parameters": {
         "USER_IRQ_WIDTH": [ { "value": "4", "value_src": "user", "resolve_type": "user", "format": "long", "usage": "all" } ],
-        "VSYNC_IRQ_BIT": [ { "value": "1", "resolve_type": "user", "format": "long", "usage": "all" } ],
+        "VSYNC_IRQ_BIT": [ { "value": "2", "value_src": "user", "resolve_type": "user", "format": "long", "usage": "all" } ],
         "FRAME_LINES": [ { "value": "1080", "resolve_type": "user", "format": "long", "usage": "all" } ],
         "C2H_BRAM_FIFO_DEPTH_WORDS": [ { "value": "4096", "resolve_type": "user", "format": "long", "usage": "all" } ],
-        "Component_Name": [ { "value": "video_to_pcie_video_cap_c2h_bridge_0_0", "resolve_type": "user", "usage": "all" } ]
+        "Component_Name": [ { "value": "video_to_pcie_video_cap_c2h_bridge_0_1", "resolve_type": "user", "usage": "all" } ]
       },
       "model_parameters": {
         "USER_IRQ_WIDTH": [ { "value": "4", "resolve_type": "generated", "format": "long", "usage": "all" } ],
-        "VSYNC_IRQ_BIT": [ { "value": "1", "resolve_type": "generated", "format": "long", "usage": "all" } ],
+        "VSYNC_IRQ_BIT": [ { "value": "2", "resolve_type": "generated", "format": "long", "usage": "all" } ],
         "FRAME_LINES": [ { "value": "1080", "resolve_type": "generated", "format": "long", "usage": "all" } ],
         "C2H_BRAM_FIFO_DEPTH_WORDS": [ { "value": "4096", "resolve_type": "generated", "format": "long", "usage": "all" } ]
       },
@@ -37,7 +37,7 @@
         "IPCONTEXT": [ { "value": "IP_Integrator" } ],
         "IPREVISION": [ { "value": "1" } ],
         "MANAGED": [ { "value": "TRUE" } ],
-        "OUTPUTDIR": [ { "value": "../../../../../../video_cap.gen/sources_1/bd/video_to_pcie/ip/video_to_pcie_video_cap_c2h_bridge_0_0" } ],
+        "OUTPUTDIR": [ { "value": "../../../../../../video_cap.gen/sources_1/bd/video_to_pcie/ip/video_to_pcie_video_cap_c2h_bridge_0_1" } ],
         "SELECTEDSIMMODEL": [ { "value": "" } ],
         "SHAREDDIR": [ { "value": "../../ipshared" } ],
         "SWVERSION": [ { "value": "2024.2" } ],

@@ -22,6 +22,7 @@
 #include <linux/kthread.h>
 #include <linux/list.h>
 #include <linux/limits.h>
+#include <linux/minmax.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
 #include <linux/pci.h>
@@ -128,17 +129,18 @@ struct video_cap_buffer {
  * - V4L2/vb2 状态：v4l2_dev/vdev/vb_queue
  * - 采集工作：独立 kthread（逻辑简单、时序确定）
  */
-struct video_cap_dev {
-	struct pci_dev *pdev;
-	struct xdma_dev *xdev;
-	void __iomem *user_regs;
-	struct video_cap_stats stats;
+	struct video_cap_multi;
+	struct video_cap_dev {
+		struct video_cap_multi *multi;
+		struct pci_dev *pdev;
+		struct xdma_dev *xdev;
+		void __iomem *user_regs;
+		struct video_cap_stats stats;
 
-	struct v4l2_device v4l2_dev;
-	struct video_device vdev;
-	struct v4l2_ctrl_handler ctrl_handler;
-	struct v4l2_ctrl *ctrl_test_pattern;
-	struct v4l2_ctrl *ctrl_skip;
+		struct video_device vdev;
+		struct v4l2_ctrl_handler ctrl_handler;
+		struct v4l2_ctrl *ctrl_test_pattern;
+		struct v4l2_ctrl *ctrl_skip;
 	struct v4l2_ctrl *ctrl_stat_vsync_timeout;
 	struct v4l2_ctrl *ctrl_stat_dma_error;
 	struct vb2_queue vb_queue;
@@ -171,19 +173,89 @@ struct video_cap_dev {
 
 	void *warmup_buf;
 	dma_addr_t warmup_dma;
-	struct sg_table warmup_sgt;
-	struct scatterlist warmup_sg;
-	bool warmup_inited;
-};
+		struct sg_table warmup_sgt;
+		struct scatterlist warmup_sg;
+		bool warmup_inited;
+	};
+
+	struct video_cap_multi {
+		struct pci_dev *pdev;
+		struct xdma_dev *xdev;
+		void __iomem *user_regs;
+
+		struct v4l2_device v4l2_dev;
+
+		/* register_bank 的 CTRL/TEST_MODE 等为全局控制：当前先限制只允许一路在采集 */
+		struct mutex hw_lock;
+		struct video_cap_dev *active_stream;
+
+		bool has_per_ch_regs;
+		u32 ch_stride;
+		u32 ch_count;
+
+		u32 user_irq_mask; /* registered bits */
+		unsigned int num_devs;
+		struct video_cap_dev **devs;
+	};
+
+	static u32 video_cap_reg_read32(struct video_cap_dev *dev, u32 off)
+	{
+		return ioread32((u8 __iomem *)dev->user_regs + off);
+	}
+
+	static bool video_cap_detect_per_channel_regs(struct video_cap_multi *m)
+	{
+		u32 caps;
+		u32 ch_cnt;
+		u32 stride;
+		u32 feats;
+
+		if (!m->user_regs)
+			return false;
+
+		caps = ioread32((u8 __iomem *)m->user_regs + REG_CAPS);
+		feats = caps & (CAPS_FEAT_PER_CH_CTRL | CAPS_FEAT_PER_CH_FMT);
+		ch_cnt = (caps & CAPS_CH_COUNT_MASK) >> CAPS_CH_COUNT_SHIFT;
+		stride = (caps & CAPS_CH_STRIDE_MASK) >> CAPS_CH_STRIDE_SHIFT;
+
+		/*
+		 * 合法性要求：
+		 * - 至少支持 per-channel CTRL/VID_FORMAT
+		 * - channel 数 >= 1
+		 * - stride >= 0x20，且 4 字节对齐
+		 */
+		if (feats != (CAPS_FEAT_PER_CH_CTRL | CAPS_FEAT_PER_CH_FMT))
+			return false;
+		if (ch_cnt == 0)
+			return false;
+		if (stride < 0x20 || (stride & 0x3))
+			return false;
+
+		m->has_per_ch_regs = true;
+		m->ch_count = ch_cnt;
+		m->ch_stride = stride;
+		return true;
+	}
+
+	static u32 video_cap_ch_reg_off(struct video_cap_dev *dev, u32 ch_off)
+	{
+		u32 stride = dev->multi && dev->multi->ch_stride ? dev->multi->ch_stride : 0x100;
+
+		return REG_CH_BASE + (dev->c2h_channel * stride) + ch_off;
+	}
 
 /* 模块参数：方便 bring-up；后续可迁移到 V4L2 controls（运行时可调，不必重载模块）。 */
 static unsigned int c2h_channel;
 module_param(c2h_channel, uint, 0644);
-MODULE_PARM_DESC(c2h_channel, "XDMA C2H channel index (default 0)");
+MODULE_PARM_DESC(c2h_channel, "First XDMA C2H channel index (base, default 0)");
 
 static unsigned int irq_index = 1;
 module_param(irq_index, uint, 0644);
-MODULE_PARM_DESC(irq_index, "XDMA user IRQ index used as VSYNC (default 1)");
+MODULE_PARM_DESC(irq_index, "First XDMA user IRQ index used as VSYNC (base, default 1)");
+
+static unsigned int num_channels;
+module_param(num_channels, uint, 0644);
+MODULE_PARM_DESC(num_channels, "Number of C2H channels to expose as /dev/videoX (0 = auto from XDMA)");
 
 static bool test_pattern = true;
 module_param(test_pattern, bool, 0644);
@@ -369,17 +441,15 @@ static int video_cap_init_controls(struct video_cap_dev *dev)
 		return ret;
 	}
 
-	dev->v4l2_dev.ctrl_handler = &dev->ctrl_handler;
-	dev->vdev.ctrl_handler = &dev->ctrl_handler;
-	return 0;
-}
+		dev->vdev.ctrl_handler = &dev->ctrl_handler;
+		return 0;
+	}
 
 static void video_cap_free_controls(struct video_cap_dev *dev)
 {
-	v4l2_ctrl_handler_free(&dev->ctrl_handler);
-	dev->v4l2_dev.ctrl_handler = NULL;
-	dev->vdev.ctrl_handler = NULL;
-}
+		v4l2_ctrl_handler_free(&dev->ctrl_handler);
+		dev->vdev.ctrl_handler = NULL;
+	}
 
 /* FPGA 用户寄存器写辅助函数（user_regs 指向 XDMA user BAR 的映射）。 */
 static void video_cap_reg_write32(struct video_cap_dev *dev, u32 off, u32 val)
@@ -387,36 +457,46 @@ static void video_cap_reg_write32(struct video_cap_dev *dev, u32 off, u32 val)
 	iowrite32(val, (u8 __iomem *)dev->user_regs + off);
 }
 
-static void video_cap_apply_hw_format(struct video_cap_dev *dev)
-{
-	u32 fmt;
+	static void video_cap_apply_hw_format(struct video_cap_dev *dev)
+	{
+		u32 fmt;
+		u32 off;
 
-	if (!dev->user_regs)
-		return;
+		if (!dev->user_regs)
+			return;
 
-	fmt = video_cap_pixfmt_to_fpga_vid_fmt(dev->pixfmt);
-	video_cap_reg_write32(dev, REG_VID_FORMAT, fmt);
-}
+		fmt = video_cap_pixfmt_to_fpga_vid_fmt(dev->pixfmt);
+		if (dev->multi && dev->multi->has_per_ch_regs)
+			off = video_cap_ch_reg_off(dev, REG_CH_OFF_VID_FORMAT);
+		else
+			off = REG_VID_FORMAT;
+		video_cap_reg_write32(dev, off, fmt);
+	}
 
 /* 使能/关闭 FPGA 采集（可选打开测试图）。 */
-static int video_cap_enable(struct video_cap_dev *dev, bool enable)
-{
-	u32 ctrl = 0;
+	static int video_cap_enable(struct video_cap_dev *dev, bool enable)
+	{
+		u32 ctrl = 0;
+		u32 off;
 
-	if (!dev->user_regs)
-		return -ENODEV;
+		if (!dev->user_regs)
+			return -ENODEV;
 
-	if (enable) {
+		if (enable) {
 		/* enable 前把像素打包格式同步给 FPGA（避免用户空间未显式 S_FMT 的情况） */
 		video_cap_apply_hw_format(dev);
 		ctrl |= CTRL_ENABLE;
-		if (dev->test_pattern)
-			ctrl |= CTRL_TEST_MODE;
-	}
+			if (dev->test_pattern)
+				ctrl |= CTRL_TEST_MODE;
+		}
 
-	video_cap_reg_write32(dev, REG_CONTROL, ctrl);
-	return 0;
-}
+		if (dev->multi && dev->multi->has_per_ch_regs)
+			off = video_cap_ch_reg_off(dev, REG_CH_OFF_CONTROL);
+		else
+			off = REG_CONTROL;
+		video_cap_reg_write32(dev, off, ctrl);
+		return 0;
+	}
 
 /*
  * VSYNC 中断处理函数（XDMA 的 user IRQ）。
@@ -723,6 +803,22 @@ static int video_cap_start_streaming(struct vb2_queue *vq, unsigned int count)
 
 	(void)count;
 
+	/*
+	 * 兼容模式：如果 FPGA 还是全局寄存器（没有 per-channel regs），多路同时 STREAMON
+	 * 会互相覆盖 CTRL/VID_FORMAT，所以只能互斥。
+	 * 一旦 FPGA 实现 REG_CAPS + per-channel block，则允许并发采集。
+	 */
+	if (!dev->multi->has_per_ch_regs) {
+		mutex_lock(&dev->multi->hw_lock);
+		if (dev->multi->active_stream && dev->multi->active_stream != dev) {
+			mutex_unlock(&dev->multi->hw_lock);
+			video_cap_return_all_buffers(dev, VB2_BUF_STATE_QUEUED);
+			return -EBUSY;
+		}
+		dev->multi->active_stream = dev;
+		mutex_unlock(&dev->multi->hw_lock);
+	}
+
 	dev->stopping = false;
 	dev->sequence = 0;
 	atomic64_set(&dev->vsync_seq, 0);
@@ -732,7 +828,7 @@ static int video_cap_start_streaming(struct vb2_queue *vq, unsigned int count)
 	if (ret) {
 		dev_err(&dev->pdev->dev, "enable user irq failed: %d\n", ret);
 		video_cap_return_all_buffers(dev, VB2_BUF_STATE_QUEUED);
-		return ret;
+		goto err_active;
 	}
 
 	ret = video_cap_enable(dev, true);
@@ -777,6 +873,13 @@ err_disable:
 err_irq:
 	xdma_user_isr_disable(dev->xdev, dev->user_irq_mask);
 	video_cap_return_all_buffers(dev, VB2_BUF_STATE_QUEUED);
+err_active:
+	if (!dev->multi->has_per_ch_regs) {
+		mutex_lock(&dev->multi->hw_lock);
+		if (dev->multi->active_stream == dev)
+			dev->multi->active_stream = NULL;
+		mutex_unlock(&dev->multi->hw_lock);
+	}
 	return ret;
 }
 
@@ -800,6 +903,13 @@ static void video_cap_stop_streaming(struct vb2_queue *vq)
 
 	video_cap_return_all_buffers(dev, VB2_BUF_STATE_ERROR);
 	dev->streaming = false;
+
+	if (!dev->multi->has_per_ch_regs) {
+		mutex_lock(&dev->multi->hw_lock);
+		if (dev->multi->active_stream == dev)
+			dev->multi->active_stream = NULL;
+		mutex_unlock(&dev->multi->hw_lock);
+	}
 
 	video_cap_stats_dump(dev, "streamoff");
 }
@@ -1005,14 +1115,10 @@ static int video_cap_register_v4l2(struct video_cap_dev *dev)
 {
 	int ret;
 
-	ret = v4l2_device_register(&dev->pdev->dev, &dev->v4l2_dev);
-	if (ret)
-		return ret;
-
 	ret = video_cap_init_controls(dev);
 	if (ret) {
 		dev_err(&dev->pdev->dev, "init controls failed: %d\n", ret);
-		goto err_v4l2;
+		return ret;
 	}
 
 	dev->vb_queue.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
@@ -1028,10 +1134,10 @@ static int video_cap_register_v4l2(struct video_cap_dev *dev)
 	ret = vb2_queue_init(&dev->vb_queue);
 	if (ret) {
 		dev_err(&dev->pdev->dev, "vb2_queue_init failed: %d\n", ret);
-		goto err_v4l2;
+		goto err_ctrls;
 	}
 
-	dev->vdev.v4l2_dev = &dev->v4l2_dev;
+	dev->vdev.v4l2_dev = &dev->multi->v4l2_dev;
 	dev->vdev.fops = &video_cap_fops;
 	dev->vdev.ioctl_ops = &video_cap_ioctl_ops;
 	dev->vdev.queue = &dev->vb_queue;
@@ -1039,7 +1145,7 @@ static int video_cap_register_v4l2(struct video_cap_dev *dev)
 	dev->vdev.release = video_device_release_empty;
 	dev->vdev.device_caps = V4L2_CAP_VIDEO_CAPTURE | V4L2_CAP_STREAMING | V4L2_CAP_READWRITE;
 
-	strscpy(dev->vdev.name, "video_cap", sizeof(dev->vdev.name));
+	snprintf(dev->vdev.name, sizeof(dev->vdev.name), "video_cap_c2h%u", dev->c2h_channel);
 	video_set_drvdata(&dev->vdev, dev);
 
 	ret = video_register_device(&dev->vdev, VFL_TYPE_VIDEO, -1);
@@ -1052,8 +1158,6 @@ static int video_cap_register_v4l2(struct video_cap_dev *dev)
 
 err_ctrls:
 	video_cap_free_controls(dev);
-err_v4l2:
-	v4l2_device_unregister(&dev->v4l2_dev);
 	return ret;
 }
 
@@ -1061,7 +1165,6 @@ static void video_cap_unregister_v4l2(struct video_cap_dev *dev)
 {
 	video_unregister_device(&dev->vdev);
 	video_cap_free_controls(dev);
-	v4l2_device_unregister(&dev->v4l2_dev);
 }
 
 /*
@@ -1074,11 +1177,20 @@ static void video_cap_unregister_v4l2(struct video_cap_dev *dev)
  */
 static int video_cap_pci_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 {
-	struct video_cap_dev *dev;
-	int user_max = 16;
-	int h2c_max = 1;
-	int c2h_max = 1;
-	int ret;
+	struct video_cap_multi *m;
+	struct video_cap_dev *dev = NULL;
+	/*
+	 * Important:
+	 * xdma_device_open() treats these as *limits* for engine probing.
+	 * Pass 0 to let XDMA auto-detect up to XDMA_CHANNEL_NUM_MAX.
+	 */
+	int user_max = 0;
+	int h2c_max = 0;
+	int c2h_max = 0;
+	unsigned int want;
+	unsigned int i;
+	int ret = 0;
+	bool v4l2_registered = false;
 
 	(void)id;
 
@@ -1088,86 +1200,196 @@ static int video_cap_pci_probe(struct pci_dev *pdev, const struct pci_device_id 
 		return -EINVAL;
 	}
 
-	dev = kzalloc(sizeof(*dev), GFP_KERNEL);
-	if (!dev)
+	m = kzalloc(sizeof(*m), GFP_KERNEL);
+	if (!m)
 		return -ENOMEM;
 
-	dev->pdev = pdev;
-	video_cap_stats_init(dev);
-	mutex_init(&dev->lock);
-	spin_lock_init(&dev->qlock);
-	INIT_LIST_HEAD(&dev->buf_list);
-	init_waitqueue_head(&dev->wq);
-	init_waitqueue_head(&dev->vsync_wq);
-	atomic64_set(&dev->vsync_seq, 0);
-	dev->vsync_timeout_ms = vsync_timeout_ms;
+	m->pdev = pdev;
+	mutex_init(&m->hw_lock);
+	m->active_stream = NULL;
+	m->user_irq_mask = 0;
+	m->has_per_ch_regs = false;
+	m->ch_stride = 0;
+	m->ch_count = 0;
+	pci_set_drvdata(pdev, m);
 
-	dev->width = VIDEO_WIDTH_DEFAULT;
-	dev->height = VIDEO_HEIGHT_DEFAULT;
-	dev->pixfmt = V4L2_PIX_FMT_XBGR32;
-	dev->bytesperline = dev->width * 4;
-	dev->sizeimage = dev->width * dev->height * 4;
-
-	dev->test_pattern = test_pattern;
-	dev->skip = skip;
-	dev->c2h_channel = c2h_channel;
-	dev->irq_index = irq_index;
-
-	pci_set_drvdata(pdev, dev);
-
-	dev->xdev = xdma_device_open(DRV_NAME, pdev, &user_max, &h2c_max, &c2h_max);
-	if (!dev->xdev) {
+	m->xdev = xdma_device_open(DRV_NAME, pdev, &user_max, &h2c_max, &c2h_max);
+	if (!m->xdev) {
 		dev_err(&pdev->dev, "xdma_device_open failed\n");
 		ret = -ENODEV;
-		goto err_free;
+		goto err_out;
 	}
 
-	if (dev->c2h_channel >= (unsigned int)c2h_max) {
-		dev_err(&pdev->dev, "invalid c2h_channel=%u (max=%d)\n", dev->c2h_channel,
-			c2h_max ? (c2h_max - 1) : -1);
-		ret = -EINVAL;
-		goto err_xdma;
-	}
-	if (dev->irq_index >= (unsigned int)user_max) {
-		dev_err(&pdev->dev, "invalid irq_index=%u (max=%d)\n", dev->irq_index,
-			user_max ? (user_max - 1) : -1);
-		ret = -EINVAL;
-		goto err_xdma;
-	}
-	dev->user_irq_mask = (u32)BIT(dev->irq_index);
-
-	if (dev->xdev->user_bar_idx < 0 || dev->xdev->user_bar_idx >= XDMA_BAR_NUM ||
-	    !dev->xdev->bar[dev->xdev->user_bar_idx]) {
-		dev_err(&pdev->dev, "invalid XDMA user BAR idx=%d\n", dev->xdev->user_bar_idx);
+	if (m->xdev->user_bar_idx < 0 || m->xdev->user_bar_idx >= XDMA_BAR_NUM ||
+	    !m->xdev->bar[m->xdev->user_bar_idx]) {
+		dev_err(&pdev->dev, "invalid XDMA user BAR idx=%d\n", m->xdev->user_bar_idx);
 		ret = -ENODEV;
 		goto err_xdma;
 	}
-	dev->user_regs = dev->xdev->bar[dev->xdev->user_bar_idx];
+	m->user_regs = m->xdev->bar[m->xdev->user_bar_idx];
+	(void)video_cap_detect_per_channel_regs(m);
 
-	ret = xdma_user_isr_register(dev->xdev, dev->user_irq_mask,
-				     video_cap_user_irq_handler, dev);
-	if (ret) {
-		dev_err(&pdev->dev, "register user irq handler failed: %d\n", ret);
+	if (c2h_max <= 0) {
+		dev_err(&pdev->dev, "no C2H channels reported by XDMA (c2h_max=%d)\n", c2h_max);
+		ret = -ENODEV;
 		goto err_xdma;
 	}
 
-	ret = video_cap_register_v4l2(dev);
-	if (ret)
-		goto err_isr;
+	want = num_channels ? num_channels : (unsigned int)c2h_max;
+	if (c2h_channel >= (unsigned int)c2h_max) {
+		dev_err(&pdev->dev, "invalid c2h_channel base=%u (c2h_max=%d)\n",
+			c2h_channel, c2h_max);
+		ret = -EINVAL;
+		goto err_xdma;
+	}
 
-	dev_info(&pdev->dev, DRV_NAME ": registered /dev/video%d (pci=%s c2h=%u irq=%u)\n",
-		 dev->vdev.num, pci_name(pdev), dev->c2h_channel, dev->irq_index);
-	video_cap_stats_dump(dev, "probe");
+	/* Clamp requested channels to what XDMA reports (degrade gracefully). */
+	if (c2h_channel + want > (unsigned int)c2h_max) {
+		unsigned int avail = (unsigned int)c2h_max - c2h_channel;
+
+		dev_warn(&pdev->dev,
+			 "clamp num_channels=%u to %u (c2h_channel=%u c2h_max=%d)\n",
+			 want, avail, c2h_channel, c2h_max);
+		want = avail;
+	}
+	if (want == 0) {
+		dev_err(&pdev->dev, "no usable C2H channels (c2h_channel=%u c2h_max=%d)\n",
+			c2h_channel, c2h_max);
+		ret = -ENODEV;
+		goto err_xdma;
+	}
+	if (irq_index + want > (unsigned int)user_max ||
+	    irq_index + want > XDMA_USER_IRQ_MAX) {
+		unsigned int avail_user = (irq_index < (unsigned int)user_max) ?
+					  ((unsigned int)user_max - irq_index) : 0;
+		unsigned int avail_max = (irq_index < XDMA_USER_IRQ_MAX) ?
+					 (XDMA_USER_IRQ_MAX - irq_index) : 0;
+		unsigned int avail = min(avail_user, avail_max);
+
+		if (avail == 0) {
+			dev_err(&pdev->dev,
+				"invalid irq_index base=%u (user_max=%d max=%u)\n",
+				irq_index, user_max, XDMA_USER_IRQ_MAX);
+			ret = -EINVAL;
+			goto err_xdma;
+		}
+
+		dev_warn(&pdev->dev,
+			 "clamp num_channels=%u to %u due to user IRQ limits (irq_index=%u user_max=%d max=%u)\n",
+			 want, avail, irq_index, user_max, XDMA_USER_IRQ_MAX);
+		want = min(want, avail);
+	}
+
+	m->num_devs = want;
+	m->devs = kcalloc(want, sizeof(*m->devs), GFP_KERNEL);
+	if (!m->devs) {
+		ret = -ENOMEM;
+		goto err_xdma;
+	}
+
+	ret = v4l2_device_register(&pdev->dev, &m->v4l2_dev);
+	if (ret) {
+		dev_err(&pdev->dev, "v4l2_device_register failed: %d\n", ret);
+		goto err_devs;
+	}
+	v4l2_registered = true;
+
+	for (i = 0; i < want; i++) {
+		u32 bit;
+
+		dev = kzalloc(sizeof(*dev), GFP_KERNEL);
+		if (!dev) {
+			ret = -ENOMEM;
+			goto err_loop;
+		}
+
+		dev->multi = m;
+		dev->pdev = pdev;
+		dev->xdev = m->xdev;
+		dev->user_regs = m->user_regs;
+
+		video_cap_stats_init(dev);
+		mutex_init(&dev->lock);
+		spin_lock_init(&dev->qlock);
+		INIT_LIST_HEAD(&dev->buf_list);
+		init_waitqueue_head(&dev->wq);
+		init_waitqueue_head(&dev->vsync_wq);
+		atomic64_set(&dev->vsync_seq, 0);
+		dev->vsync_timeout_ms = vsync_timeout_ms;
+
+		dev->width = VIDEO_WIDTH_DEFAULT;
+		dev->height = VIDEO_HEIGHT_DEFAULT;
+		dev->pixfmt = V4L2_PIX_FMT_XBGR32;
+		dev->bytesperline = dev->width * 4;
+		dev->sizeimage = dev->width * dev->height * 4;
+
+		dev->test_pattern = test_pattern;
+		dev->skip = skip;
+		dev->c2h_channel = c2h_channel + i;
+		dev->irq_index = irq_index + i;
+
+		bit = (u32)BIT(dev->irq_index);
+		dev->user_irq_mask = bit;
+		m->user_irq_mask |= bit;
+
+		ret = xdma_user_isr_register(m->xdev, bit, video_cap_user_irq_handler, dev);
+		if (ret) {
+			dev_err(&pdev->dev, "register user irq handler failed (irq=%u): %d\n",
+				dev->irq_index, ret);
+			goto err_loop;
+		}
+
+		ret = video_cap_register_v4l2(dev);
+		if (ret)
+			goto err_loop;
+
+		m->devs[i] = dev;
+
+		dev_info(&pdev->dev,
+			 DRV_NAME ": registered /dev/video%d (pci=%s c2h=%u irq=%u)\n",
+			 dev->vdev.num, pci_name(pdev), dev->c2h_channel, dev->irq_index);
+		video_cap_stats_dump(dev, "probe");
+		dev = NULL;
+	}
+
 	return 0;
 
-err_isr:
-	xdma_user_isr_register(dev->xdev, dev->user_irq_mask, NULL, NULL);
+err_loop:
+	if (dev) {
+		xdma_user_isr_register(m->xdev, (u32)BIT(dev->irq_index), NULL, NULL);
+		kfree(dev);
+		dev = NULL;
+	}
+	while (i > 0) {
+		struct video_cap_dev *d;
+
+		i--;
+		d = m->devs[i];
+
+		if (!d)
+			continue;
+		if (d->streaming)
+			video_cap_stop_streaming(&d->vb_queue);
+		video_cap_unregister_v4l2(d);
+		xdma_user_isr_register(m->xdev, d->user_irq_mask, NULL, NULL);
+		kfree(d);
+		m->devs[i] = NULL;
+	}
+	if (v4l2_registered)
+		v4l2_device_unregister(&m->v4l2_dev);
+err_devs:
+	kfree(m->devs);
+	m->devs = NULL;
 err_xdma:
-	xdma_device_close(pdev, dev->xdev);
-	dev->xdev = NULL;
-err_free:
-	video_cap_stats_dump(dev, "probe_failed");
-	kfree(dev);
+	if (m->xdev) {
+		xdma_user_isr_disable(m->xdev, m->user_irq_mask);
+		xdma_user_isr_register(m->xdev, m->user_irq_mask, NULL, NULL);
+		xdma_device_close(pdev, m->xdev);
+		m->xdev = NULL;
+	}
+err_out:
+	pci_set_drvdata(pdev, NULL);
+	kfree(m);
 	return ret;
 }
 
@@ -1179,25 +1401,37 @@ err_free:
  */
 static void video_cap_pci_remove(struct pci_dev *pdev)
 {
-	struct video_cap_dev *dev = pci_get_drvdata(pdev);
+	struct video_cap_multi *m = pci_get_drvdata(pdev);
+	unsigned int i;
 
-	if (!dev)
+	if (!m)
 		return;
 
-	if (dev->streaming)
-		video_cap_stop_streaming(&dev->vb_queue);
+	for (i = 0; i < m->num_devs; i++) {
+		struct video_cap_dev *dev = m->devs ? m->devs[i] : NULL;
 
-	video_cap_unregister_v4l2(dev);
-
-	if (dev->xdev) {
-		xdma_user_isr_disable(dev->xdev, dev->user_irq_mask);
-		xdma_user_isr_register(dev->xdev, dev->user_irq_mask, NULL, NULL);
-		xdma_device_close(pdev, dev->xdev);
-		dev->xdev = NULL;
+		if (!dev)
+			continue;
+		if (dev->streaming)
+			video_cap_stop_streaming(&dev->vb_queue);
+		video_cap_unregister_v4l2(dev);
+		if (m->xdev)
+			xdma_user_isr_register(m->xdev, dev->user_irq_mask, NULL, NULL);
+		video_cap_stats_dump(dev, "remove");
+		kfree(dev);
 	}
 
-	video_cap_stats_dump(dev, "remove");
-	kfree(dev);
+	if (m->xdev) {
+		xdma_user_isr_disable(m->xdev, m->user_irq_mask);
+		xdma_user_isr_register(m->xdev, m->user_irq_mask, NULL, NULL);
+		xdma_device_close(pdev, m->xdev);
+		m->xdev = NULL;
+	}
+
+	v4l2_device_unregister(&m->v4l2_dev);
+	kfree(m->devs);
+	pci_set_drvdata(pdev, NULL);
+	kfree(m);
 }
 
 static const struct pci_device_id video_cap_pci_ids[] = {
