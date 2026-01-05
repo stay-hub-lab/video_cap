@@ -1,12 +1,19 @@
 # kmod：video_cap_pcie_v4l2（方案B）
+本目录输出单一内核模块：`video_cap_pcie_v4l2.ko`
 
-本目录输出一个单一内核模块：`video_cap_pcie_v4l2.ko`。
+- PCIe 侧：模块内集成 XDMA（`xdma_device_open/xdma_xfer_submit/xdma_user_isr_*`）
+- V4L2 侧：注册 `/dev/videoX`，使用 `vb2-dma-sg` 管理 buffer，并把 `sg_table` 直接提交给 XDMA C2H DMA
 
-- PCIe 侧：在本模块内直接使用（集成的）XDMA core（`xdma_device_open/xdma_xfer_submit/xdma_user_isr_*`）
-- V4L2 侧：注册 `/dev/videoX`，用 `vb2-dma-sg` 管理 buffer，并把 `sg_table` 直接交给 `xdma_xfer_submit()` 做 C2H DMA
+## 源码模块分层（方便维护）
+驱动源码已从单文件拆分为多文件（功能不变，便于后续做多通道/低延时优化）：
+
+- `video_cap_pcie_v4l2_drv.c`：PCI probe/remove + module_param + 创建 `/dev/videoX`
+- `video_cap_pcie_v4l2_hw.c`：FPGA user BAR 寄存器访问（CTRL/VID_FORMAT/CAPS）+ 统计打印
+- `video_cap_pcie_v4l2_vb2.c`：vb2 ops + 采集线程 + VSYNC wait + XDMA DMA submit
+- `video_cap_pcie_v4l2_v4l2.c`：V4L2 ioctl/controls + vb2_queue/video_device 注册
+- `video_cap_pcie_v4l2_priv.h`：共用结构体/内部接口
 
 ## 构建
-
 在 Linux 机器上：
 
 ```bash
@@ -15,70 +22,93 @@ make
 ```
 
 ## 加载与使用
-
-如果你用 `insmod` 直接加载，先手工加载 V4L2/vb2 依赖模块（否则可能出现 `Unknown symbol in module`）：
+如果用 `insmod` 直接加载，建议先加载 V4L2/vb2 依赖模块（否则可能 `Unknown symbol in module`）：
 
 ```bash
 sudo modprobe -a videodev videobuf2_common videobuf2_v4l2 videobuf2_dma_sg || true
 ```
 
-最常用的加载方式（指定 C2H 通道与 VSYNC IRQ）：
+单通道（最常用）：
 
 ```bash
 sudo insmod video_cap_pcie_v4l2.ko c2h_channel=0 irq_index=1
 ```
 
-确认设备与播放：
+多通道（需要 XDMA 实际枚举到多路 C2H）：
+
+```bash
+sudo insmod video_cap_pcie_v4l2.ko num_channels=2 c2h_channel=0 irq_index=1
+```
+
+确认设备节点：
 
 ```bash
 v4l2-ctl --list-devices
-v4l2-ctl -d /dev/video0 --all
+ls -l /dev/video*
+v4l2-ctl -d /dev/video0 --list-formats-ext
+```
+
+## 播放/抓帧（XR24 / YUYV）
+提示：像素格式是“每路 `/dev/videoX` 独立设置”的，下面用 `/dev/video0` 举例；第二路就把命令里的 `video0` 改成 `video1`。
+
+### XR24（32-bit BGRX；`ffplay` 用 `bgr0`）
+
+```bash
+v4l2-ctl -d /dev/video0 --set-fmt-video=width=1920,height=1080,pixelformat=XR24
 ffplay -f v4l2 -video_size 1920x1080 -input_format bgr0 -i /dev/video0
 ```
 
-YUYV（YUV422）：
+### YUYV（YUV422；`ffplay` 用 `yuyv422`）
 
 ```bash
 v4l2-ctl -d /dev/video1 --set-fmt-video=width=1920,height=1080,pixelformat=YUYV
 ffplay -f v4l2 -video_size 1920x1080 -input_format yuyv422 -i /dev/video1
 ```
 
-## 参数说明
+## 多通道（裸机/FPGA/BD）接线约定
+驱动按“通道 i”使用：
 
-### insmod 参数（module_param）
+- C2H engine：`c2h_channel + i`
+- VSYNC user IRQ bit：`irq_index + i`
 
-- `c2h_channel`：第一个 C2H 通道号（base，默认 0）
-- `irq_index`：第一个用作 VSYNC 的 XDMA user IRQ 编号（base，默认 1）
-- `num_channels`：暴露多少路 `/dev/videoX`（0=自动按 XDMA 枚举到的 `c2h_channel_max`）
+建议约定：
+
+- `irq_index=1`：ch0 用 `usr_irq_req[1]`，ch1 用 `usr_irq_req[2]`
+- 每个 `video_cap_c2h_bridge` 实例只拉高一个 VSYNC bit（`VSYNC_IRQ_BIT`），其余 bit 保持 0，避免未 ACK 导致 pending
+
+BD 里常见做法：
+
+- 两个 `video_cap_c2h_bridge`：`VSYNC_IRQ_BIT` 分别设为 `1/2`
+- 两路 bridge 的 `usr_irq_req[VSYNC_IRQ_BIT]` 通过 `xlconcat` 接到 XDMA `usr_irq_req[3:0]`（ACK 反向用 `xlslice` 分给两路）
+
+寄存器（多通道窗口/stride 等）参考：`fpga/REGMAP_multichannel.md`
+
+## 参数说明（insmod module_param）
+- `c2h_channel`：第一路 C2H 通道号（base，默认 0）
+- `irq_index`：第一路用作 VSYNC 的 XDMA user IRQ 编号（base，默认 1）
+- `num_channels`：暴露多少路 `/dev/videoX`（0=自动按 XDMA 枚举到的 C2H 通道数）
 - `test_pattern`：是否让 FPGA 输出测试图（默认 1）
 - `skip`：STREAMON 后丢弃 N 帧（warm-up，默认 0）
-- `vsync_timeout_ms`：等待 VSYNC 的超时时间（ms，默认 1000）
+- `vsync_timeout_ms`：等待 VSYNC 超时（ms，默认 1000）
 
 说明：
-- 多通道时，每路 video 会使用 `c2h_channel + i` 和 `irq_index + i`（i 从 0 开始）。
-- 你的 FPGA 如果只接了 4 路 user IRQ，那么 `num_channels` 最多也就建议 4（否则多出来的通道会一直等不到 VSYNC）。
-- 如果指定 `num_channels` 大于 XDMA 实际枚举到的 C2H 通道数（例如 `c2h_max=1`），驱动会打印 `clamp num_channels=...` 并按可用通道数降级创建 `/dev/videoX`。要真正生成 2 路 video，需要 XDMA 实际枚举到 ≥2 路 C2H（例如能看到 `xdma0_c2h_0/xdma0_c2h_1`），并把两路视频流分别接到对应的 C2H 端口。
 
-说明：`test_pattern/skip/vsync_timeout_ms` 也可以在加载后用 V4L2 controls 设置（见下文）。
+- 多通道时每路 video 使用 `c2h_channel + i` 和 `irq_index + i`（`i` 从 0 开始）
+- 若 `num_channels` 大于 XDMA 实际枚举到的 C2H 数，驱动会打印 `clamp num_channels=...` 并按可用通道数降级创建 `/dev/videoX`
+- 当前驱动实现有一个限制：在 FPGA 不支持 per-channel CTRL/VID_FORMAT 之前，同一时刻只允许一路 `/dev/videoX` 进入 streaming（其余返回 `EBUSY`）；后续要做“多路同时采集”需要完全 per-channel 化（寄存器/IRQ/DMA 资源隔离）
 
-## 调试与运行时控制
+## 调试与排查
 
-调试信息：
-- `dmesg` 中会在 `probe/streamoff/remove` 打印统计信息（VSYNC 次数、超时次数、DMA 次数/错误次数），用于快速判断“是否在来 VSYNC、DMA 是否正常”。
-- 如果出现 `vsync timeout`，优先检查 FPGA 是否真的输出了对应 user IRQ（以及 `irq_index` 是否匹配），并适当调大 VSYNC 超时。
+```bash
+sudo dmesg -T | tail -n 120
+v4l2-ctl -d /dev/video0 --all
+```
 
-运行时参数（V4L2 controls）：
+### “buffer corrupted” / DMA timeout
+如果 `ffplay/ffmpeg` 提示 `Dequeued v4l2 buffer contains corrupted data`，同时 `dmesg` 出现 `xdma_xfer_submit ... timed out`，一般优先检查：
 
-### YUYV / “buffer corrupted” 排查
-- 如果 `ffplay/ffmpeg` 提示 `Dequeued v4l2 buffer contains corrupted data`，同时 `dmesg` 出现 `xdma_xfer_submit ... timed out` / `dma_short`，大多是 vb2-dma-sg 的 buffer 按 PAGE_SIZE 向上取整，导致 `sg_table` 总 DMA 长度 > `sizeimage`。
-- 解决办法：驱动侧把提交给 XDMA 的 DMA 长度裁剪到精确的 `sizeimage`（否则 XDMA 会等待 padding 区而超时）。
-- 先查看支持的控件：`v4l2-ctl -d /dev/video0 --list-ctrls`
-- 设置测试图：`v4l2-ctl -d /dev/video0 --set-ctrl=video_cap_test_pattern=1`
-- 设置 warm-up 丢帧数：`v4l2-ctl -d /dev/video0 --set-ctrl=video_cap_skip=2`
-- 设置 VSYNC 等待超时（低延时场景建议 30~200ms）：`v4l2-ctl -d /dev/video0 --set-ctrl=video_cap_vsync_timeout_ms=100`
-- 读取运行统计（只读）：`v4l2-ctl -d /dev/video0 --get-ctrl=video_cap_vsync_timeout`、`v4l2-ctl -d /dev/video0 --get-ctrl=video_cap_dma_error`
-
-注意：为简化状态机，streaming 期间修改这些 controls 会返回 busy。
+- FPGA 的 VSYNC IRQ 是否映射到了正确的 `irq_index + i`
+- FPGA 输出字节流是否与当前 pixelformat 一致（`XR24` 对应 `bgr0`；`YUYV` 对应 `yuyv422`）
 
 ## 卸载
 
@@ -88,5 +118,6 @@ sudo rmmod video_cap_pcie_v4l2
 
 ## 重要说明
 
-- `kmod/xdma/` 已包含完整 XDMA 源码拷贝（把整个 `deploy/planB_monolithic/` 拷贝到 Linux 即可独立编译）。
-- 这不是把“官方 xdma.ko”当依赖，而是把其核心代码直接编译进本模块中；因此不需要先加载 `xdma.ko`。
+- 本工程的 `deploy/planB_monolithic/kmod/xdma/` 已包含 XDMA 核心源码并集成编译进 `video_cap_pcie_v4l2.ko`，不需要额外加载“官方 xdma.ko”
+- 同一块 PCIe 设备不要同时加载两套驱动（会抢占同一个 PCI device）
+

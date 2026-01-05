@@ -1,7 +1,10 @@
 obj-m += video_cap_pcie_v4l2.o
 
 # Composite module objects (avoid foo.o <- foo.o circular link)
-video_cap_pcie_v4l2-objs := video_cap_pcie_v4l2_main.o
+video_cap_pcie_v4l2-objs := video_cap_pcie_v4l2_drv.o
+video_cap_pcie_v4l2-objs += video_cap_pcie_v4l2_hw.o
+video_cap_pcie_v4l2-objs += video_cap_pcie_v4l2_vb2.o
+video_cap_pcie_v4l2-objs += video_cap_pcie_v4l2_v4l2.o
 video_cap_pcie_v4l2-objs += xdma/libxdma.o
 video_cap_pcie_v4l2-objs += xdma/xdma_thread.o
 
