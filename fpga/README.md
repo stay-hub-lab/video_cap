@@ -3,7 +3,7 @@
 本目录对应 Kintex-7（`XC7K480TFFG1156-2`）的视频采集 FPGA 工程。当前阶段（Phase-2）目标是：
 
 - 以 **AXI-Stream** 方式把视频数据直接送入 XDMA C2H（低延时、无帧缓存）
-- 主机侧通过 V4L2 驱动以 `/dev/videoX` 读取帧数据（见 `deploy/planB_monolithic/`）
+- 主机侧通过 V4L2 驱动以 `/dev/videoX` 读取帧数据（见 `driver/v4l2/`）
 
 > 说明：本文重点解释 `fpga/src/hdl/video_cap_top_pcie.v` 中 **`v_vid_in_axi4s_0` 与 `xdma_0` 之间的“胶水逻辑”** 的模块关系、时钟/复位、数据通路和中断通路；后续要做 Block Design 化时，这部分逻辑需要模块化/封装。
 
